@@ -1,0 +1,173 @@
+.app-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  color: #d4d4d4;
+}
+
+.content-area {
+  flex: 1;
+  padding: 20px;
+  background: #252526;
+}
+
+.terminal-panel {
+  height: 300px;
+  background: #1e1e1e;
+  border-top: 1px solid #3c3c3c;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: height 0.2s ease;
+}
+
+.terminal-panel:not(.visible) {
+  display: none;
+}
+
+.terminal-header {
+  height: 35px;
+  background: #2d2d30;
+  border-bottom: 1px solid #3c3c3c;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.terminal-tabs {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.terminal-tab {
+  padding: 8px 12px;
+  background: #2d2d30;
+  border-right: 1px solid #3c3c3c;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.terminal-tab.active {
+  background: #1e1e1e;
+}
+
+.terminal-tab:hover {
+  background: #37373d;
+}
+
+.close-tab {
+  background: none;
+  border: none;
+  color: #cccccc;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+.close-tab:hover {
+  background: #e81123;
+  color: white;
+}
+
+.add-terminal {
+  background: none;
+  border: none;
+  color: #cccccc;
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: 16px;
+}
+
+.add-terminal:hover {
+  background: #37373d;
+}
+
+.terminal-controls {
+  display: flex;
+  align-items: center;
+}
+
+.control-btn {
+  background: none;
+  border: none;
+  color: #cccccc;
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.control-btn:hover {
+  background: #37373d;
+}
+
+.terminal-content {
+  flex: 1;
+  position: relative;
+}
+
+.terminal-instance {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px;
+}
+
+.terminal-instance.hidden {
+  display: none;
+}
+
+.xterm-container {
+  height: 100%;
+  width: 100%;
+}
+
+.resize-handle {
+  position: absolute;
+  top: -3px;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+  background: transparent;
+}
+
+.resize-handle:hover {
+  background: #007acc;
+}
+
+.terminal-toggle {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  background: #007acc;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.terminal-toggle:hover {
+  background: #005a9e;
+}
+
+/* Xterm.js styling */
+.xterm {
+  font-feature-settings: "liga" 0;
+  position: relative;
+  user-select: none;
+  -ms-user-select: none;
+  -webkit-user-select: none;
+}
+
+.xterm.focus,
+.xterm:focus {
+  outline: none;
+}

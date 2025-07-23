@@ -1,0 +1,39 @@
+<template name="terminal">
+  <div class="terminal-panel {{#if isTerminalVisible}}visible{{/if}}">
+    <!-- Terminal header with tabs and controls -->
+    <div class="terminal-header">
+      <div class="terminal-tabs">
+        {{#each terminals}}
+          <div class="terminal-tab {{#if isActive}}active{{/if}}" data-id="{{id}}">
+            <span class="tab-title">{{title}}</span>
+            <button class="close-tab" data-id="{{id}}">×</button>
+          </div>
+        {{/each}}
+        <button class="add-terminal">+</button>
+      </div>
+      
+      <div class="terminal-controls">
+        <button class="control-btn" id="minimize-terminal">−</button>
+        <button class="control-btn" id="maximize-terminal">□</button>
+        <button class="control-btn" id="close-terminal">×</button>
+      </div>
+    </div>
+    
+    <!-- Terminal content area -->
+    <div class="terminal-content">
+      {{#each terminals}}
+        <div class="terminal-instance {{#unless isActive}}hidden{{/unless}}" data-id="{{id}}">
+          <div class="xterm-container" id="terminal-{{id}}"></div>
+        </div>
+      {{/each}}
+    </div>
+    
+    <!-- Resize handle -->
+    <div class="resize-handle"></div>
+  </div>
+  
+  <!-- Toggle button when terminal is hidden -->
+  {{#unless isTerminalVisible}}
+    <button class="terminal-toggle">Terminal</button>
+  {{/unless}}
+</template>

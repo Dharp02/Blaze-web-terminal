@@ -1,0 +1,23 @@
+<head>
+  <title>Terminal App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+  <div id="app">
+    {{> terminalApp}}
+  </div>
+</body>
+
+<template name="terminalApp">
+  <div class="app-container">
+    <!-- Main content area -->
+    <div class="content-area">
+      <h1>Terminal Application</h1>
+      <p>Your main application content goes here...</p>
+    </div>
+    
+    <!-- Terminal panel (similar to VS Code) -->
+    {{> terminal}}
+  </div>
+</template>
