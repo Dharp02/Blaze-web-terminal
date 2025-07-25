@@ -1,4 +1,4 @@
-// imports/ui/terminal.js - Version without node-pty
+// imports/ui/terminal.js - Simple version with basic keys only
 import { Template } from 'meteor/templating';
 import { ReactiveVar } from 'meteor/reactive-var';
 import { Random } from 'meteor/random';
@@ -7,44 +7,20 @@ import { FitAddon } from 'xterm-addon-fit';
 
 import './terminal.html';
 
-// Reactive variables for terminal state
-const isTerminalVisible = new ReactiveVar(true);
+// Terminal state
 const terminals = new ReactiveVar([]);
 const activeTerminalId = new ReactiveVar(null);
+const isTerminalVisible = new ReactiveVar(true);
 
 // Terminal instances storage
 const terminalInstances = new Map();
 
-// Simulated file system for demo
-const fileSystem = {
-  '/': ['home', 'var', 'usr', 'etc'],
-  '/home': ['user'],
-  '/home/user': ['Documents', 'Downloads', 'Desktop', 'projects'],
-  '/home/user/projects': ['meteor-app', 'react-app', 'node-server'],
-  '/home/user/Documents': ['readme.txt', 'notes.md']
-};
-
-let currentDirectory = '/home/user';
-
 Template.terminal.onCreated(function() {
-  // Initialize with one terminal when template is created
+  // Initialize with one terminal
   this.autorun(() => {
     if (terminals.get().length === 0) {
       addNewTerminal();
     }
-  });
-  
-  // Listen for global keyboard shortcuts
-  document.addEventListener('terminal-toggle', () => {
-    isTerminalVisible.set(!isTerminalVisible.get());
-  });
-  
-  document.addEventListener('terminal-new', () => {
-    addNewTerminal();
-  });
-  
-  document.addEventListener('terminal-fit-all', () => {
-    fitAllTerminals();
   });
 });
 
@@ -82,21 +58,6 @@ Template.terminal.events({
     isTerminalVisible.set(false);
   },
   
-  'click #minimize-terminal'() {
-    const panel = document.querySelector('.terminal-panel');
-    if (panel) {
-      panel.style.height = '35px';
-    }
-  },
-  
-  'click #maximize-terminal'() {
-    const panel = document.querySelector('.terminal-panel');
-    if (panel) {
-      panel.style.height = '80vh';
-      fitAllTerminals();
-    }
-  },
-  
   'click .terminal-toggle'() {
     isTerminalVisible.set(true);
   },
@@ -116,11 +77,12 @@ Template.terminal.onRendered(function() {
     });
   });
   
-  window.addEventListener('resize', () => {
-    fitAllTerminals();
-  });
+  window.addEventListener('resize', fitAllTerminals);
 });
 
+/**
+ * Creates a new terminal
+ */
 function addNewTerminal() {
   const newId = Random.id();
   const currentTerminals = terminals.get();
@@ -140,6 +102,9 @@ function addNewTerminal() {
   activeTerminalId.set(newId);
 }
 
+/**
+ * Sets the active terminal
+ */
 function setActiveTerminal(terminalId) {
   const currentTerminals = terminals.get();
   const updatedTerminals = currentTerminals.map(t => ({
@@ -150,6 +115,7 @@ function setActiveTerminal(terminalId) {
   terminals.set(updatedTerminals);
   activeTerminalId.set(terminalId);
   
+  // Focus the terminal
   Meteor.setTimeout(() => {
     const terminalInstance = terminalInstances.get(terminalId);
     if (terminalInstance) {
@@ -158,15 +124,19 @@ function setActiveTerminal(terminalId) {
   }, 100);
 }
 
+/**
+ * Closes a terminal
+ */
 function closeTerminal(terminalId) {
   const currentTerminals = terminals.get();
   
   if (currentTerminals.length === 1) {
-    return;
+    return; // Don't close the last terminal
   }
   
   const filteredTerminals = currentTerminals.filter(t => t.id !== terminalId);
   
+  // Dispose of the terminal instance
   const terminalInstance = terminalInstances.get(terminalId);
   if (terminalInstance) {
     terminalInstance.dispose();
@@ -175,11 +145,15 @@ function closeTerminal(terminalId) {
   
   terminals.set(filteredTerminals);
   
+  // Set a new active terminal if the closed one was active
   if (activeTerminalId.get() === terminalId && filteredTerminals.length > 0) {
     setActiveTerminal(filteredTerminals[0].id);
   }
 }
 
+/**
+ * Initializes a new xterm.js terminal instance
+ */
 function initializeTerminal(terminalId) {
   Meteor.setTimeout(() => {
     const container = document.getElementById(`terminal-${terminalId}`);
@@ -227,37 +201,28 @@ function initializeTerminal(terminalId) {
     term.fitAddon = fitAddon;
     terminalInstances.set(terminalId, term);
     
-    setupAdvancedTerminal(term, terminalId);
+    setupBasicTerminal(term, terminalId);
     
   }, 100);
 }
 
-function setupAdvancedTerminal(term, terminalId) {
-  // Enhanced terminal with more realistic features
-  term.writeln('\x1b[1;34m╭─ Terminal App v1.0\x1b[0m');
-  term.writeln('\x1b[1;34m├─ Meteor + Blaze + Xterm.js\x1b[0m');
-  term.writeln('\x1b[1;34m╰─ Type "help" for available commands\x1b[0m');
+/**
+ * Sets up terminal with all key handlers but no command execution
+ */
+function setupBasicTerminal(term, terminalId) {
+  // Simple welcome message
+  term.writeln('Terminal Ready - All keys supported');
   term.writeln('');
   
   let currentLine = '';
   let isInCommand = false;
-  
-  // Enhanced command history
   const commandHistory = [];
   let historyIndex = -1;
   
-  // Auto-completion data
-  const commands = ['help', 'clear', 'ls', 'cd', 'pwd', 'mkdir', 'touch', 'cat', 'echo', 'date', 'whoami', 'ps', 'top', 'git', 'npm', 'node', 'meteor'];
+  // Simple prompt
+  term.write('$ ');
   
-  function getPrompt() {
-    const user = 'user';
-    const hostname = 'terminal-app';
-    const dir = currentDirectory === '/home/user' ? '~' : currentDirectory.replace('/home/user', '~');
-    return `\x1b[1;32m${user}@${hostname}\x1b[0m:\x1b[1;34m${dir}\x1b[0m$ `;
-  }
-  
-  term.write(getPrompt());
-  
+  // Handle all keys as requested
   term.onData(data => {
     if (isInCommand) return;
     
@@ -297,17 +262,20 @@ function setupAdvancedTerminal(term, terminalId) {
   function handleEnterKey() {
     term.write('\r\n');
     
+    // Add to history if not empty
     if (currentLine.trim()) {
       commandHistory.unshift(currentLine.trim());
       if (commandHistory.length > 100) {
         commandHistory.pop();
       }
-      executeAdvancedCommand(currentLine.trim());
+      // Just echo what was typed, no command execution
+      term.writeln(`You entered: "${currentLine}"`);
     }
     
+    // Reset for next line
     currentLine = '';
     historyIndex = -1;
-    term.write(getPrompt());
+    term.write('$ ');
   }
   
   function handleBackspace() {
@@ -337,297 +305,27 @@ function setupAdvancedTerminal(term, terminalId) {
   function handleCtrlC() {
     term.write('^C\r\n');
     currentLine = '';
-    term.write(getPrompt());
+    historyIndex = -1;
+    term.write('$ ');
   }
   
   function handleTab() {
-    if (currentLine.trim()) {
-      const matches = commands.filter(cmd => cmd.startsWith(currentLine.trim()));
-      if (matches.length === 1) {
-        const completion = matches[0].substring(currentLine.length);
-        currentLine += completion;
-        term.write(completion);
-      } else if (matches.length > 1) {
-        term.write('\r\n');
-        term.writeln(matches.join('  '));
-        term.write(getPrompt() + currentLine);
-      }
-    }
+    // Simple tab - just add 4 spaces or do nothing
+    currentLine += '    ';
+    term.write('    ');
   }
   
   function replaceCurrentLine(newLine) {
     // Clear current line
-    term.write('\r' + ' '.repeat(getPrompt().replace(/\x1b\[[0-9;]*m/g, '').length + currentLine.length) + '\r');
-    term.write(getPrompt() + newLine);
+    term.write('\r' + ' '.repeat(2 + currentLine.length) + '\r');
+    term.write('$ ' + newLine);
     currentLine = newLine;
-  }
-  
-  async function executeAdvancedCommand(command) {
-    isInCommand = true;
-    const [cmd, ...args] = command.split(' ');
-    
-    try {
-      switch (cmd.toLowerCase()) {
-        case 'help':
-          showHelp();
-          break;
-          
-        case 'clear':
-          term.clear();
-          break;
-          
-        case 'ls':
-          listDirectory(args[0]);
-          break;
-          
-        case 'cd':
-          changeDirectory(args[0]);
-          break;
-          
-        case 'pwd':
-          term.writeln(currentDirectory);
-          break;
-          
-        case 'mkdir':
-          makeDirectory(args[0]);
-          break;
-          
-        case 'touch':
-          createFile(args[0]);
-          break;
-          
-        case 'cat':
-          showFile(args[0]);
-          break;
-          
-        case 'echo':
-          term.writeln(args.join(' '));
-          break;
-          
-        case 'date':
-          term.writeln(new Date().toString());
-          break;
-          
-        case 'whoami':
-          term.writeln('user');
-          break;
-          
-        case 'ps':
-          showProcesses();
-          break;
-          
-        case 'git':
-          handleGitCommand(args);
-          break;
-          
-        case 'npm':
-          handleNpmCommand(args);
-          break;
-          
-        case 'meteor':
-          handleMeteorCommand(args);
-          break;
-          
-        case 'node':
-          if (args[0] === '-v' || args[0] === '--version') {
-            term.writeln('v22.16.0');
-          } else {
-            term.writeln('Node.js REPL not available in demo mode');
-          }
-          break;
-          
-        default:
-          term.writeln(`bash: ${cmd}: command not found`);
-      }
-    } catch (error) {
-      term.writeln(`Error: ${error.message}`);
-    }
-    
-    isInCommand = false;
-  }
-  
-  function showHelp() {
-    term.writeln('Available commands:');
-    term.writeln('  \x1b[1;33mhelp\x1b[0m       - Show this help');
-    term.writeln('  \x1b[1;33mclear\x1b[0m      - Clear terminal');
-    term.writeln('  \x1b[1;33mls\x1b[0m [path]  - List directory contents');
-    term.writeln('  \x1b[1;33mcd\x1b[0m <path>  - Change directory');
-    term.writeln('  \x1b[1;33mpwd\x1b[0m        - Print working directory');
-    term.writeln('  \x1b[1;33mmkdir\x1b[0m <dir> - Create directory');
-    term.writeln('  \x1b[1;33mtouch\x1b[0m <file> - Create file');
-    term.writeln('  \x1b[1;33mcat\x1b[0m <file> - Show file contents');
-    term.writeln('  \x1b[1;33mecho\x1b[0m <text> - Echo text');
-    term.writeln('  \x1b[1;33mdate\x1b[0m       - Show current date');
-    term.writeln('  \x1b[1;33mwhoami\x1b[0m     - Show current user');
-    term.writeln('  \x1b[1;33mps\x1b[0m         - Show processes');
-    term.writeln('  \x1b[1;33mgit\x1b[0m <cmd>  - Git commands');
-    term.writeln('  \x1b[1;33mnpm\x1b[0m <cmd>  - NPM commands');
-    term.writeln('  \x1b[1;33mmeteor\x1b[0m <cmd> - Meteor commands');
-    term.writeln('');
-    term.writeln('Keyboard shortcuts:');
-    term.writeln('  \x1b[1;36mCtrl+C\x1b[0m     - Interrupt command');
-    term.writeln('  \x1b[1;36mTab\x1b[0m        - Auto-complete');
-    term.writeln('  \x1b[1;36m↑/↓\x1b[0m        - Command history');
-  }
-  
-  function listDirectory(path) {
-    const targetPath = path ? resolvePath(path) : currentDirectory;
-    const contents = fileSystem[targetPath];
-    
-    if (contents) {
-      contents.forEach(item => {
-        const isDir = fileSystem[`${targetPath}/${item}`];
-        if (isDir) {
-          term.writeln(`\x1b[1;34m${item}/\x1b[0m`);
-        } else {
-          term.writeln(item);
-        }
-      });
-    } else {
-      term.writeln(`ls: cannot access '${targetPath}': No such file or directory`);
-    }
-  }
-  
-  function changeDirectory(path) {
-    if (!path || path === '~') {
-      currentDirectory = '/home/user';
-      return;
-    }
-    
-    const targetPath = resolvePath(path);
-    if (fileSystem[targetPath]) {
-      currentDirectory = targetPath;
-    } else {
-      term.writeln(`cd: no such file or directory: ${path}`);
-    }
-  }
-  
-  function resolvePath(path) {
-    if (path.startsWith('/')) {
-      return path;
-    } else if (path === '..') {
-      const parts = currentDirectory.split('/');
-      parts.pop();
-      return parts.join('/') || '/';
-    } else if (path === '.') {
-      return currentDirectory;
-    } else {
-      return `${currentDirectory}/${path}`.replace('//', '/');
-    }
-  }
-  
-  function makeDirectory(dirname) {
-    if (dirname) {
-      term.writeln(`Created directory: ${dirname}`);
-    } else {
-      term.writeln('mkdir: missing operand');
-    }
-  }
-  
-  function createFile(filename) {
-    if (filename) {
-      term.writeln(`Created file: ${filename}`);
-    } else {
-      term.writeln('touch: missing operand');
-    }
-  }
-  
-  function showFile(filename) {
-    if (filename) {
-      if (filename === 'readme.txt') {
-        term.writeln('# Terminal App');
-        term.writeln('This is a demo terminal built with Meteor and Xterm.js');
-        term.writeln('It simulates basic shell commands.');
-      } else if (filename === 'notes.md') {
-        term.writeln('# Development Notes');
-        term.writeln('- Terminal UI matches VS Code style');
-        term.writeln('- Built with reactive Blaze templates');
-        term.writeln('- Uses Xterm.js for terminal emulation');
-      } else {
-        term.writeln(`cat: ${filename}: No such file or directory`);
-      }
-    } else {
-      term.writeln('cat: missing operand');
-    }
-  }
-  
-  function showProcesses() {
-    term.writeln('PID   CMD');
-    term.writeln('1     /sbin/init');
-    term.writeln('123   meteor');
-    term.writeln('456   node (mongod)');
-    term.writeln('789   terminal-app');
-  }
-  
-  function handleGitCommand(args) {
-    const subcommand = args[0];
-    switch (subcommand) {
-      case 'status':
-        term.writeln('On branch main');
-        term.writeln('nothing to commit, working tree clean');
-        break;
-      case 'log':
-        term.writeln('commit abc123 (HEAD -> main)');
-        term.writeln('Author: Developer <dev@example.com>');
-        term.writeln('Date: ' + new Date().toDateString());
-        term.writeln('    Added terminal functionality');
-        break;
-      case '--version':
-        term.writeln('git version 2.40.0');
-        break;
-      default:
-        term.writeln(`git: '${subcommand}' is not a git command. See 'git --help'.`);
-    }
-  }
-  
-  function handleNpmCommand(args) {
-    const subcommand = args[0];
-    switch (subcommand) {
-      case '--version':
-      case '-v':
-        term.writeln('10.8.1');
-        break;
-      case 'list':
-      case 'ls':
-        term.writeln('terminal-app@1.0.0');
-        term.writeln('├── meteor@3.3.0');
-        term.writeln('├── xterm@5.3.0');
-        term.writeln('└── xterm-addon-fit@0.8.0');
-        break;
-      case 'start':
-        term.writeln('> meteor run');
-        term.writeln('Starting Meteor app...');
-        break;
-      default:
-        term.writeln(`Usage: npm <command>`);
-    }
-  }
-  
-  function handleMeteorCommand(args) {
-    const subcommand = args[0];
-    switch (subcommand) {
-      case '--version':
-        term.writeln('Meteor 3.3.0');
-        break;
-      case 'run':
-        term.writeln('[[[[[ ~/terminal-app ]]]]]');
-        term.writeln('=> Started proxy.');
-        term.writeln('=> Started HMR server.');
-        term.writeln('=> Started MongoDB.');
-        term.writeln('=> Started your app.');
-        term.writeln('=> App running at: http://localhost:3000/');
-        break;
-      case 'list':
-        term.writeln('blaze-html-templates');
-        term.writeln('reactive-var');
-        term.writeln('session');
-        break;
-      default:
-        term.writeln('Usage: meteor <command>');
-    }
   }
 }
 
+/**
+ * Fits all terminals to their containers
+ */
 function fitAllTerminals() {
   terminalInstances.forEach(term => {
     if (term.fitAddon) {
@@ -638,6 +336,9 @@ function fitAllTerminals() {
   });
 }
 
+/**
+ * Handles terminal panel resizing
+ */
 function startResize(event) {
   event.preventDefault();
   
