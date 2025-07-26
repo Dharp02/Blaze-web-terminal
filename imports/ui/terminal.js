@@ -1,4 +1,4 @@
-// imports/ui/terminal.js - WebSocket version with fixed onData handling
+// imports/ui/terminal.js - Enhanced version with SSH connection form
 import { Template } from 'meteor/templating';
 import { ReactiveVar } from 'meteor/reactive-var';
 import { Random } from 'meteor/random';
@@ -11,6 +11,8 @@ import './terminal.html';
 const terminals = new ReactiveVar([]);
 const activeTerminalId = new ReactiveVar(null);
 const isTerminalVisible = new ReactiveVar(true);
+const showConnectionModal = new ReactiveVar(false);
+const connectionStatus = new ReactiveVar('disconnected'); // disconnected, connecting, connected
 
 // Terminal instances and WebSocket connections
 const terminalInstances = new Map();
@@ -22,33 +24,19 @@ let isConnecting = false;
 let reconnectAttempts = 0;
 const maxReconnectAttempts = 5;
 
+// Default SSH configuration
+const defaultSSHConfig = new ReactiveVar({
+  host: 'localhost',
+  port: 22,
+  username: '',
+  password: ''
+});
+
 Template.terminal.onCreated(function() {
-  console.log('Terminal created, connecting to WebSocket...');
+  console.log('Terminal component created');
   
   // Connect to WebSocket server
   connectWebSocket();
-  
-  // Initialize with one terminal after WebSocket connects OR after timeout
-  this.autorun(() => {
-    const terminalCount = terminals.get().length;
-    const wsReady = websocket && websocket.readyState === WebSocket.OPEN;
-    
-    // Create terminal if none exist and either WebSocket is ready OR after 2 seconds
-    if (terminalCount === 0) {
-      if (wsReady) {
-        console.log('WebSocket ready, creating terminal');
-        addNewTerminal();
-      } else {
-        // Create fallback terminal after delay if WebSocket fails
-        Meteor.setTimeout(() => {
-          if (terminals.get().length === 0) {
-            console.log('WebSocket not ready, creating fallback terminal');
-            addNewTerminal();
-          }
-        }, 2000);
-      }
-    }
-  });
 });
 
 Template.terminal.helpers({
@@ -56,18 +44,51 @@ Template.terminal.helpers({
     return isTerminalVisible.get();
   },
   
+  showConnectionModal() {
+    return showConnectionModal.get();
+  },
+  
+  connectionStatus() {
+    return connectionStatus.get();
+  },
+  
+  isConnected() {
+    return connectionStatus.get() === 'connected';
+  },
+  
+  isConnecting() {
+    return connectionStatus.get() === 'connecting';
+  },
+  
+  isDisconnected() {
+    return connectionStatus.get() === 'disconnected';
+  },
+  
   terminals() {
     return terminals.get().map(term => ({
       ...term,
-      isActive: term.id === activeTerminalId.get()
+      isActive: term.id === activeTerminalId.get(),
+      isTerminalConnecting: term.status === 'connecting'
     }));
+  },
+  
+  sshConfig() {
+    return defaultSSHConfig.get();
+  },
+  
+  // Helper to check terminal status
+  isTerminalStatus(status) {
+    return function(terminalStatus) {
+      return terminalStatus === status;
+    };
   }
 });
 
 Template.terminal.events({
+  // Terminal events
   'click .add-terminal'(event) {
     event.preventDefault();
-    addNewTerminal();
+    showConnectionModal.set(true);
   },
   
   'click .terminal-tab'(event) {
@@ -91,6 +112,59 @@ Template.terminal.events({
   
   'mousedown .resize-handle'(event) {
     startResize(event);
+  },
+  
+  // Terminal instance click handling
+  'click .terminal-instance'(event) {
+    const terminalId = event.currentTarget.dataset.id;
+    const terminalInstance = terminalInstances.get(terminalId);
+    if (terminalInstance) {
+      console.log('🎯 Terminal clicked, focusing:', terminalId);
+      terminalInstance.focus();
+    }
+  },
+  
+  'click .xterm-container'(event) {
+    const terminalId = event.currentTarget.closest('.terminal-instance').dataset.id;
+    const terminalInstance = terminalInstances.get(terminalId);
+    if (terminalInstance) {
+      console.log('🎯 XTerm container clicked, focusing:', terminalId);
+      terminalInstance.focus();
+    }
+  },
+  
+  // Connection modal events
+  'click .connection-modal-overlay'(event) {
+    if (event.target === event.currentTarget) {
+      showConnectionModal.set(false);
+    }
+  },
+  
+  'click .modal-close'() {
+    showConnectionModal.set(false);
+  },
+  
+  'submit .connection-form'(event) {
+    event.preventDefault();
+    handleConnectionSubmit(event);
+  },
+  
+  'input .ssh-input'(event) {
+    const field = event.target.name;
+    const value = event.target.value;
+    const config = defaultSSHConfig.get();
+    config[field] = field === 'port' ? parseInt(value) || 22 : value;
+    defaultSSHConfig.set(config);
+  },
+  
+  'click .quick-connect'(event) {
+    const config = event.currentTarget.dataset;
+    defaultSSHConfig.set({
+      host: config.host,
+      port: parseInt(config.port) || 22,
+      username: config.username,
+      password: ''
+    });
   }
 });
 
@@ -107,19 +181,68 @@ Template.terminal.onRendered(function() {
     });
   });
   
-  window.addEventListener('resize', fitAllTerminals);
+  // Handle window resize
+  const handleResize = () => {
+    console.log('🔄 Window resized, fitting terminals...');
+    Meteor.setTimeout(() => {
+      fitAllTerminals();
+    }, 150);
+  };
+  
+  window.addEventListener('resize', handleResize);
+  
+  // Handle terminal visibility changes
+  this.autorun(() => {
+    const visible = isTerminalVisible.get();
+    const activeId = activeTerminalId.get();
+    
+    if (visible && activeId) {
+      // When terminal becomes visible, focus the active terminal
+      Meteor.setTimeout(() => {
+        const activeTerminal = terminalInstances.get(activeId);
+        if (activeTerminal) {
+          console.log('🎯 Terminal panel visible, focusing active terminal:', activeId);
+          activeTerminal.focus();
+          if (activeTerminal.fitAddon) {
+            activeTerminal.fitAddon.fit();
+          }
+        }
+      }, 300);
+    }
+  });
+  
+  // Cleanup on destroy
+  this.autorun((computation) => {
+    if (computation.invalidated) return;
+    
+    // Store cleanup function
+    this.cleanup = () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  });
 });
 
 Template.terminal.onDestroyed(function() {
+  console.log('Terminal template destroyed');
+  
   // Close WebSocket connection
   if (websocket) {
     websocket.close();
+    websocket = null;
   }
   
   // Clean up all terminal instances
-  terminalInstances.forEach(term => term.dispose());
+  terminalInstances.forEach((term, terminalId) => {
+    console.log('🧹 Disposing terminal:', terminalId);
+    term.dispose();
+  });
   terminalInstances.clear();
   terminalSessions.clear();
+  
+  // Call cleanup function if it exists
+  if (this.cleanup) {
+    this.cleanup();
+  }
 });
 
 /**
@@ -131,21 +254,21 @@ function connectWebSocket() {
   }
   
   isConnecting = true;
-  console.log('Connecting to WebSocket server ws://localhost:8080...');
+  console.log('Connecting to WebSocket server...');
   
   try {
     websocket = new WebSocket('ws://localhost:8080');
     
     websocket.onopen = () => {
-      console.log('✅ WebSocket connected successfully');
+      console.log('✅ WebSocket connected');
       isConnecting = false;
       reconnectAttempts = 0;
+      connectionStatus.set('connected');
     };
     
     websocket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('WebSocket message received:', data.type);
         handleWebSocketMessage(data);
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -153,42 +276,43 @@ function connectWebSocket() {
     };
     
     websocket.onclose = (event) => {
-      console.log(`❌ WebSocket connection closed: ${event.code} - ${event.reason}`);
+      console.log(`❌ WebSocket closed: ${event.code}`);
       isConnecting = false;
+      connectionStatus.set('disconnected');
       
-      // Update existing terminals to show disconnection
-      showWebSocketError('Connection lost');
+      // Update terminals
+      showWebSocketError('WebSocket disconnected');
       
-      // Attempt to reconnect
+      // Reconnect attempt
       if (reconnectAttempts < maxReconnectAttempts) {
         reconnectAttempts++;
-        console.log(`Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
+        console.log(`Reconnecting... (${reconnectAttempts}/${maxReconnectAttempts})`);
         setTimeout(connectWebSocket, 2000 * reconnectAttempts);
-      } else {
-        console.error('Max reconnection attempts reached');
-        showWebSocketError('Connection failed - running in offline mode');
       }
     };
     
     websocket.onerror = (error) => {
       console.error('WebSocket error:', error);
       isConnecting = false;
-      showWebSocketError('WebSocket error');
+      connectionStatus.set('disconnected');
     };
     
   } catch (error) {
     console.error('Error creating WebSocket:', error);
     isConnecting = false;
+    connectionStatus.set('disconnected');
   }
 }
 
 /**
- * Handle messages from WebSocket server
+ * Handle WebSocket messages
  */
 function handleWebSocketMessage(data) {
+  console.log('📨 Received:', data.type);
+  
   switch (data.type) {
     case 'connected':
-      console.log('Server connection confirmed');
+      console.log('Server connected');
       break;
       
     case 'terminal_created':
@@ -208,34 +332,120 @@ function handleWebSocketMessage(data) {
       break;
       
     case 'terminal_closed':
-      console.log(`Terminal ${data.sessionId} closed on server`);
+      console.log(`Terminal closed: ${data.sessionId}`);
       break;
-      
-    default:
-      console.log('Unknown message type:', data.type);
   }
+}
+
+/**
+ * Handle connection form submission
+ */
+function handleConnectionSubmit(event) {
+  const formData = new FormData(event.target);
+  const sshConfig = {
+    host: formData.get('host') || 'localhost',
+    port: parseInt(formData.get('port')) || 22,
+    username: formData.get('username'),
+    password: formData.get('password')
+  };
+  
+  // Validate required fields
+  if (!sshConfig.username) {
+    alert('Username is required');
+    return;
+  }
+  
+  if (!sshConfig.password) {
+    alert('Password is required');
+    return;
+  }
+  
+  // Update default config
+  defaultSSHConfig.set(sshConfig);
+  
+  // Close modal
+  showConnectionModal.set(false);
+  
+  // Create terminal with SSH config
+  createTerminalWithSSH(sshConfig);
+}
+
+/**
+ * Create terminal with SSH configuration
+ */
+function createTerminalWithSSH(sshConfig) {
+  if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+    alert('WebSocket not connected. Please wait and try again.');
+    return;
+  }
+  
+  const newId = Random.id();
+  const currentTerminals = terminals.get();
+  
+  const newTerminal = {
+    id: newId,
+    title: `${sshConfig.username}@${sshConfig.host}:${sshConfig.port}`,
+    isActive: true,
+    status: 'connecting'
+  };
+  
+  // Set other terminals as inactive
+  const updatedTerminals = currentTerminals.map(t => ({
+    ...t,
+    isActive: false
+  }));
+  
+  terminals.set([...updatedTerminals, newTerminal]);
+  activeTerminalId.set(newId);
+  
+  // Send create terminal request with SSH config
+  console.log('Creating terminal with SSH config:', sshConfig);
+  websocket.send(JSON.stringify({
+    type: 'create_terminal',
+    sessionId: newId,
+    cols: 80,
+    rows: 24,
+    sshConfig: sshConfig
+  }));
 }
 
 /**
  * Handle terminal creation response
  */
 function handleTerminalCreated(data) {
-  const { sessionId, shell, platform } = data;
-  console.log(`✅ Server created terminal: ${sessionId} (${shell} on ${platform})`);
+  const { sessionId, shell, platform, host } = data;
+  console.log(`✅ Terminal created: ${sessionId}`);
   
   const terminalInstance = terminalInstances.get(sessionId);
   if (terminalInstance) {
     terminalInstance.clear();
-    terminalInstance.writeln(`\x1b[1;32m● Connected to ${shell} on ${platform}\x1b[0m`);
+    terminalInstance.writeln(`\x1b[1;32m● Connected to ${host}\x1b[0m`);
+    terminalInstance.writeln(`\x1b[1;32m● Shell: ${shell} on ${platform}\x1b[0m`);
+    terminalInstance.writeln(`\x1b[1;32m● Terminal ready for input\x1b[0m`);
     terminalInstance.writeln('');
     
-    // Mark this session as connected
-    terminalSessions.set(sessionId, { connected: true, shell, platform });
+    // Mark session as connected
+    terminalSessions.set(sessionId, { connected: true, shell, platform, host });
+    
+    // Focus the terminal for immediate input
+    Meteor.setTimeout(() => {
+      terminalInstance.focus();
+      console.log('🎯 Terminal focused and ready for input');
+      
+      // Fit the terminal
+      if (terminalInstance.fitAddon) {
+        terminalInstance.fitAddon.fit();
+        console.log(`📐 Terminal fitted: ${terminalInstance.cols}x${terminalInstance.rows}`);
+      }
+    }, 200);
   }
+  
+  // Update terminal status
+  updateTerminalStatus(sessionId, 'connected');
 }
 
 /**
- * Handle output from terminal
+ * Handle terminal output
  */
 function handleTerminalOutput(data) {
   const { sessionId, data: output } = data;
@@ -255,11 +465,11 @@ function handleTerminalExit(data) {
   
   if (terminalInstance) {
     terminalInstance.writeln(`\r\n\x1b[1;31m● Process exited with code ${exitCode}\x1b[0m`);
-    terminalInstance.writeln('\x1b[1;33m● Press Enter to restart or close this terminal\x1b[0m');
+    terminalInstance.writeln('\x1b[1;33m● Connection closed\x1b[0m');
   }
   
-  // Remove from sessions
   terminalSessions.delete(sessionId);
+  updateTerminalStatus(sessionId, 'disconnected');
 }
 
 /**
@@ -271,64 +481,35 @@ function handleTerminalError(data) {
   
   if (terminalInstance) {
     terminalInstance.writeln(`\r\n\x1b[1;31m● Error: ${error}\x1b[0m`);
+    terminalInstance.writeln('\x1b[1;33m● Check your connection details and try again\x1b[0m');
   }
   
-  console.error(`Terminal ${sessionId} error:`, error);
+  console.error(`Terminal error: ${error}`);
+  updateTerminalStatus(sessionId, 'error');
 }
 
 /**
- * Show WebSocket error in all terminals
+ * Update terminal status
+ */
+function updateTerminalStatus(terminalId, status) {
+  const currentTerminals = terminals.get();
+  const updatedTerminals = currentTerminals.map(t => 
+    t.id === terminalId ? { ...t, status } : t
+  );
+  terminals.set(updatedTerminals);
+}
+
+/**
+ * Show WebSocket error
  */
 function showWebSocketError(message) {
-  console.log('Showing WebSocket error to user:', message);
-  
   terminalInstances.forEach(term => {
     term.writeln(`\r\n\x1b[1;31m● ${message}\x1b[0m`);
-    term.writeln('\x1b[1;33m● Terminal now running in offline mode\x1b[0m');
-    term.write('$ ');
   });
 }
 
 /**
- * Creates a new terminal
- */
-function addNewTerminal() {
-  console.log('Adding new terminal...');
-  
-  const newId = Random.id();
-  const currentTerminals = terminals.get();
-  
-  const newTerminal = {
-    id: newId,
-    title: `Terminal ${currentTerminals.length + 1}`,
-    isActive: true
-  };
-  
-  // Set all other terminals as inactive
-  const updatedTerminals = currentTerminals.map(t => ({
-    ...t,
-    isActive: false
-  }));
-  
-  terminals.set([...updatedTerminals, newTerminal]);
-  activeTerminalId.set(newId);
-  
-  // Request server to create terminal session if WebSocket is connected
-  if (websocket && websocket.readyState === WebSocket.OPEN) {
-    console.log('Requesting server to create terminal session');
-    websocket.send(JSON.stringify({
-      type: 'create_terminal',
-      sessionId: newId,
-      cols: 80,
-      rows: 24
-    }));
-  } else {
-    console.log('WebSocket not available, terminal will run in offline mode');
-  }
-}
-
-/**
- * Sets the active terminal
+ * Set active terminal
  */
 function setActiveTerminal(terminalId) {
   const currentTerminals = terminals.get();
@@ -340,7 +521,6 @@ function setActiveTerminal(terminalId) {
   terminals.set(updatedTerminals);
   activeTerminalId.set(terminalId);
   
-  // Focus the terminal
   Meteor.setTimeout(() => {
     const terminalInstance = terminalInstances.get(terminalId);
     if (terminalInstance) {
@@ -350,18 +530,18 @@ function setActiveTerminal(terminalId) {
 }
 
 /**
- * Closes a terminal
+ * Close terminal
  */
 function closeTerminal(terminalId) {
   const currentTerminals = terminals.get();
   
   if (currentTerminals.length === 1) {
-    return; // Don't close the last terminal
+    return; // Don't close last terminal
   }
   
   const filteredTerminals = currentTerminals.filter(t => t.id !== terminalId);
   
-  // Close server session if WebSocket is available
+  // Close server session
   if (websocket && websocket.readyState === WebSocket.OPEN) {
     websocket.send(JSON.stringify({
       type: 'close_terminal',
@@ -369,7 +549,7 @@ function closeTerminal(terminalId) {
     }));
   }
   
-  // Dispose of the terminal instance
+  // Cleanup terminal instance
   const terminalInstance = terminalInstances.get(terminalId);
   if (terminalInstance) {
     terminalInstance.dispose();
@@ -379,14 +559,14 @@ function closeTerminal(terminalId) {
   terminalSessions.delete(terminalId);
   terminals.set(filteredTerminals);
   
-  // Set a new active terminal if the closed one was active
+  // Set new active terminal
   if (activeTerminalId.get() === terminalId && filteredTerminals.length > 0) {
     setActiveTerminal(filteredTerminals[0].id);
   }
 }
 
 /**
- * Initializes a new xterm.js terminal instance
+ * Initialize terminal instance
  */
 function initializeTerminal(terminalId) {
   console.log('Initializing terminal:', terminalId);
@@ -394,7 +574,7 @@ function initializeTerminal(terminalId) {
   Meteor.setTimeout(() => {
     const container = document.getElementById(`terminal-${terminalId}`);
     if (!container) {
-      console.error('❌ Container not found:', `terminal-${terminalId}`);
+      console.error('Container not found:', `terminal-${terminalId}`);
       return;
     }
     
@@ -406,133 +586,116 @@ function initializeTerminal(terminalId) {
       fontFamily: 'Monaco, Menlo, "Ubuntu Mono", "Consolas", "Courier New", monospace',
       lineHeight: 1.2,
       letterSpacing: 0,
-      rows: 24,
-      cols: 80,
+      rows: 30,
+      cols: 100,
+      allowTransparency: false,
+      convertEol: true,
+      scrollback: 1000,
+      tabStopWidth: 8,
       theme: {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4',
-        cursor: '#d4d4d4',
-        cursorAccent: '#1e1e1e',
-        selection: '#264f78',
-        black: '#000000',
-        red: '#f44747',
-        green: '#608b4e',
-        yellow: '#ffcc02',
-        blue: '#569cd6',
-        magenta: '#c586c0',
-        cyan: '#4ec9b0',
-        white: '#d4d4d4',
-        brightBlack: '#666666',
-        brightRed: '#f44747',
-        brightGreen: '#608b4e',
-        brightYellow: '#ffcc02',
-        brightBlue: '#569cd6',
-        brightMagenta: '#c586c0',
-        brightCyan: '#4ec9b0',
-        brightWhite: '#d4d4d4'
+        background: '#0c0c0c',
+        foreground: '#cccccc',
+        cursor: '#ffffff',
+        cursorAccent: '#000000',
+        selection: 'rgba(255, 255, 255, 0.3)',
+        black: '#0c0c0c',
+        red: '#c50f1f',
+        green: '#13a10e',
+        yellow: '#c19c00',
+        blue: '#0037da',
+        magenta: '#881798',
+        cyan: '#3a96dd',
+        white: '#cccccc',
+        brightBlack: '#767676',
+        brightRed: '#e74856',
+        brightGreen: '#16c60c',
+        brightYellow: '#f9f1a5',
+        brightBlue: '#3b78ff',
+        brightMagenta: '#b4009e',
+        brightCyan: '#61d6d6',
+        brightWhite: '#f2f2f2'
       }
     });
     
+    // Load and configure fit addon
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     
+    // Open terminal in container
     term.open(container);
-    fitAddon.fit();
     
+    // Initial fit
+    Meteor.setTimeout(() => {
+      fitAddon.fit();
+      console.log(`📐 Terminal fitted: ${term.cols}x${term.rows}`);
+    }, 50);
+    
+    // Store fit addon reference
     term.fitAddon = fitAddon;
     terminalInstances.set(terminalId, term);
     
-    console.log('✅ Terminal instance created and stored');
-    
-    // Set up input handling - THE CRITICAL PART
+    // Set up input handling IMMEDIATELY
     setupTerminalInput(term, terminalId);
     
-    // Show initial status
-    if (websocket && websocket.readyState === WebSocket.OPEN) {
-      term.writeln('\x1b[1;33m● Connecting to terminal server...\x1b[0m');
-    } else {
-      term.writeln('\x1b[1;33m● WebSocket server not available\x1b[0m');
-      term.writeln('\x1b[1;32m● Running in offline mode - type to test\x1b[0m');
-      term.write('$ ');
-    }
+    // Focus the terminal to enable input
+    term.focus();
     
-  }, 200);
+    // Show initial status
+    term.writeln('\x1b[1;33m● Terminal initialized and ready for input\x1b[0m');
+    term.writeln('\x1b[1;33m● Waiting for SSH connection...\x1b[0m');
+    
+    console.log('✅ Terminal setup complete');
+    
+  }, 100);
 }
 
 /**
- * Sets up terminal input handling
+ * Setup terminal input handling
  */
 function setupTerminalInput(term, terminalId) {
-  console.log('Setting up input handling for terminal:', terminalId);
+  console.log('🎯 Setting up input handling for terminal:', terminalId);
   
-  // For offline mode
-  let currentLine = '';
-  
-  // THE CRITICAL onData HANDLER
+  // Critical: Set up the onData handler for input
   term.onData(data => {
-    console.log('🎯 Input received:', data, 'charCode:', data.charCodeAt(0));
+    console.log('📝 Terminal input received:', JSON.stringify(data));
     
-    // Check if we have an active WebSocket connection
     const session = terminalSessions.get(terminalId);
     const wsConnected = websocket && websocket.readyState === WebSocket.OPEN;
     
     if (wsConnected && session && session.connected) {
-      // Send to server via WebSocket
-      console.log('📡 Sending to server via WebSocket');
+      // Send input to SSH server
+      console.log('📡 Sending input to SSH server');
       websocket.send(JSON.stringify({
         type: 'terminal_input',
         sessionId: terminalId,
         input: data
       }));
     } else {
-      // Handle locally (offline mode)
-      console.log('💻 Handling locally (offline mode)');
-      handleLocalInput(term, data, currentLine, (newLine) => {
-        currentLine = newLine;
-      });
+      // Show offline message
+      console.log('❌ Terminal not connected, input ignored');
+      term.writeln('\r\n\x1b[1;31m● Not connected to SSH server\x1b[0m');
     }
   });
   
-  console.log('✅ onData handler set up');
+  // Handle terminal focus
+  term.onFocus(() => {
+    console.log('🎯 Terminal focused:', terminalId);
+  });
+  
+  term.onBlur(() => {
+    console.log('😴 Terminal blurred:', terminalId);
+  });
+  
+  // Auto-focus when clicked
+  term.element.addEventListener('click', () => {
+    term.focus();
+  });
+  
+  console.log('✅ Input handling setup complete');
 }
 
 /**
- * Handle input locally when WebSocket is not available
- */
-function handleLocalInput(term, data, currentLine, setCurrentLine) {
-  switch (data) {
-    case '\r': // Enter
-      term.write('\r\n');
-      if (currentLine.trim()) {
-        term.writeln(`You typed: "${currentLine}"`);
-      }
-      setCurrentLine('');
-      term.write('$ ');
-      break;
-      
-    case '\u007f': // Backspace
-      if (currentLine.length > 0) {
-        setCurrentLine(currentLine.slice(0, -1));
-        term.write('\b \b');
-      }
-      break;
-      
-    case '\u0003': // Ctrl+C
-      term.write('^C\r\n');
-      setCurrentLine('');
-      term.write('$ ');
-      break;
-      
-    default:
-      if (data >= ' ') {
-        setCurrentLine(currentLine + data);
-        term.write(data);
-      }
-  }
-}
-
-/**
- * Fits all terminals to their containers
+ * Fit all terminals
  */
 function fitAllTerminals() {
   terminalInstances.forEach(term => {
@@ -545,7 +708,7 @@ function fitAllTerminals() {
 }
 
 /**
- * Handles terminal panel resizing
+ * Handle terminal resize
  */
 function startResize(event) {
   event.preventDefault();
@@ -572,7 +735,6 @@ function startResize(event) {
     document.removeEventListener('mousemove', onMouseMove);
     document.removeEventListener('mouseup', onMouseUp);
     document.body.style.userSelect = '';
-    
     fitAllTerminals();
   }
   

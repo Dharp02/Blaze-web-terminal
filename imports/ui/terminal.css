@@ -1,113 +1,229 @@
-.app-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #1e1e1e;
-  color: #d4d4d4;
+/* Terminal Component Styles */
+
+/* === Variables === */
+:root {
+  --terminal-bg: #1e1e1e;
+  --terminal-header-bg: #2d2d30;
+  --terminal-border: #3e3e42;
+  --terminal-text: #d4d4d4;
+  --terminal-text-secondary: #969696;
+  --terminal-accent: #007acc;
+  --terminal-success: #4caf50;
+  --terminal-error: #f44336;
+  --terminal-warning: #ff9800;
+  --terminal-shadow: rgba(0, 0, 0, 0.3);
+  --modal-overlay: rgba(0, 0, 0, 0.7);
+  --border-radius: 6px;
+  --transition: all 0.2s ease;
 }
 
-.content-area {
-  flex: 1;
-  padding: 20px;
-  background: #252526;
-}
-
+/* === Terminal Panel === */
 .terminal-panel {
-  height: 300px;
-  background: #1e1e1e;
-  border-top: 1px solid #3c3c3c;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 450px;
+  background: var(--terminal-bg);
+  border-top: 1px solid var(--terminal-border);
+  box-shadow: 0 -4px 20px var(--terminal-shadow);
   display: flex;
   flex-direction: column;
-  position: relative;
-  transition: height 0.2s ease;
+  transform: translateY(100%);
+  transition: var(--transition);
+  z-index: 1000;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Courier New', monospace;
 }
 
-.terminal-panel:not(.visible) {
-  display: none;
+.terminal-panel.visible {
+  transform: translateY(0);
 }
 
+/* === Terminal Header === */
 .terminal-header {
-  height: 35px;
-  background: #2d2d30;
-  border-bottom: 1px solid #3c3c3c;
+  background: var(--terminal-header-bg);
+  border-bottom: 1px solid var(--terminal-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 0;
+  height: 40px;
+  user-select: none;
 }
 
 .terminal-tabs {
   display: flex;
   align-items: center;
-  height: 100%;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
+.terminal-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* === Terminal Tab === */
 .terminal-tab {
-  padding: 8px 12px;
-  background: #2d2d30;
-  border-right: 1px solid #3c3c3c;
-  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-}
-
-.terminal-tab.active {
-  background: #1e1e1e;
+  padding: 8px 12px;
+  background: var(--terminal-header-bg);
+  border-right: 1px solid var(--terminal-border);
+  cursor: pointer;
+  transition: var(--transition);
+  min-width: 120px;
+  max-width: 200px;
+  position: relative;
+  color: var(--terminal-text-secondary);
 }
 
 .terminal-tab:hover {
-  background: #37373d;
+  background: var(--terminal-bg);
+  color: var(--terminal-text);
+}
+
+.terminal-tab.active {
+  background: var(--terminal-bg);
+  color: var(--terminal-text);
+  border-bottom: 2px solid var(--terminal-accent);
+}
+
+.connection-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  background: var(--terminal-text-secondary);
+  transition: var(--transition);
+}
+
+.terminal-tab.status-connecting .connection-indicator {
+  background: var(--terminal-warning);
+  animation: pulse 1.5s infinite;
+}
+
+.terminal-tab.status-connected .connection-indicator {
+  background: var(--terminal-success);
+}
+
+.terminal-tab.status-error .connection-indicator {
+  background: var(--terminal-error);
+}
+
+.tab-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
 }
 
 .close-tab {
   background: none;
   border: none;
-  color: #cccccc;
+  color: var(--terminal-text-secondary);
   cursor: pointer;
   padding: 2px 4px;
-  border-radius: 2px;
+  margin-left: 8px;
+  border-radius: 3px;
+  font-size: 16px;
+  line-height: 1;
+  transition: var(--transition);
 }
 
 .close-tab:hover {
-  background: #e81123;
+  background: var(--terminal-error);
   color: white;
 }
 
+/* === Add Terminal Button === */
 .add-terminal {
   background: none;
   border: none;
-  color: #cccccc;
+  color: var(--terminal-text-secondary);
   cursor: pointer;
   padding: 8px 12px;
   font-size: 16px;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .add-terminal:hover {
-  background: #37373d;
+  background: var(--terminal-accent);
+  color: white;
 }
 
+.add-icon {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+/* === Terminal Controls === */
 .terminal-controls {
   display: flex;
   align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: var(--border-radius);
+  margin-right: 8px;
+}
+
+.connection-status.status-connected {
+  color: var(--terminal-success);
+}
+
+.connection-status.status-connecting {
+  color: var(--terminal-warning);
+}
+
+.connection-status.status-disconnected {
+  color: var(--terminal-error);
+}
+
+.status-indicator {
+  font-size: 8px;
+  animation: pulse 2s infinite;
 }
 
 .control-btn {
   background: none;
   border: none;
-  color: #cccccc;
+  color: var(--terminal-text-secondary);
   cursor: pointer;
-  padding: 8px 12px;
+  padding: 6px 8px;
+  border-radius: 3px;
   font-size: 14px;
+  transition: var(--transition);
 }
 
 .control-btn:hover {
-  background: #37373d;
+  background: var(--terminal-border);
+  color: var(--terminal-text);
 }
 
+#close-terminal:hover {
+  background: var(--terminal-error);
+  color: white;
+}
+
+/* === Terminal Content === */
 .terminal-content {
   flex: 1;
   position: relative;
+  overflow: hidden;
+  background: #0c0c0c;
 }
 
 .terminal-instance {
@@ -117,6 +233,7 @@
   right: 0;
   bottom: 0;
   padding: 8px;
+  background: #0c0c0c;
 }
 
 .terminal-instance.hidden {
@@ -124,50 +241,494 @@
 }
 
 .xterm-container {
-  height: 100%;
   width: 100%;
+  height: 100%;
+  cursor: text;
 }
 
-.resize-handle {
+/* XTerm specific styles */
+.xterm {
+  cursor: text;
+}
+
+.xterm .xterm-viewport {
+  overflow-y: auto;
+  cursor: default;
+}
+
+.xterm .xterm-screen {
+  position: relative;
+}
+
+.xterm .xterm-screen canvas {
   position: absolute;
-  top: -3px;
+  left: 0;
+  top: 0;
+}
+
+.xterm .xterm-scroll-area {
+  visibility: hidden;
+}
+
+.xterm-char-measure-element {
+  display: inline-block;
+  visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: -9999em;
+  line-height: normal;
+}
+
+.xterm.focus .xterm-cursor {
+  background-color: #ffffff;
+}
+
+.xterm:not(.focus) .xterm-cursor {
+  outline: 1px solid #ffffff;
+  outline-offset: -1px;
+  background-color: transparent;
+}
+
+.xterm.focus:not(.xterm-cursor-blink-on) .xterm-cursor {
+  background-color: #ffffff;
+}
+
+/* Terminal scrollbar */
+.xterm .xterm-viewport::-webkit-scrollbar {
+  width: 8px;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+/* === Terminal Loading State === */
+.terminal-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--terminal-text-secondary);
+  z-index: 10;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--terminal-border);
+  border-top: 3px solid var(--terminal-accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 12px;
+}
+
+/* === Empty State === */
+.terminal-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--terminal-text-secondary);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.7;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px 0;
+  color: var(--terminal-text);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.empty-state p {
+  margin: 0 0 20px 0;
+  font-size: 14px;
+}
+
+/* === Connection Modal === */
+.connection-modal-overlay {
+  position: fixed;
+  top: 0;
   left: 0;
   right: 0;
-  height: 6px;
-  cursor: ns-resize;
-  background: transparent;
+  bottom: 0;
+  background: var(--modal-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease;
 }
 
-.resize-handle:hover {
-  background: #007acc;
+.connection-modal {
+  background: var(--terminal-header-bg);
+  border-radius: var(--border-radius);
+  box-shadow: 0 8px 32px var(--terminal-shadow);
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
 }
 
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--terminal-border);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--terminal-text);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--terminal-text-secondary);
+  cursor: pointer;
+  font-size: 24px;
+  padding: 4px;
+  border-radius: 3px;
+  transition: var(--transition);
+}
+
+.modal-close:hover {
+  background: var(--terminal-error);
+  color: white;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+/* === Quick Connect === */
+.quick-connect-section {
+  margin-bottom: 24px;
+}
+
+.quick-connect-section h4 {
+  margin: 0 0 12px 0;
+  color: var(--terminal-text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.quick-connect-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.quick-connect-btn {
+  background: var(--terminal-bg);
+  border: 1px solid var(--terminal-border);
+  color: var(--terminal-text);
+  padding: 12px 16px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 13px;
+  text-align: left;
+}
+
+.quick-connect-btn:hover {
+  background: var(--terminal-accent);
+  border-color: var(--terminal-accent);
+  transform: translateY(-1px);
+}
+
+.divider {
+  text-align: center;
+  color: var(--terminal-text-secondary);
+  margin: 24px 0;
+  position: relative;
+  font-size: 13px;
+}
+
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--terminal-border);
+  z-index: 1;
+}
+
+.divider::after {
+  content: attr(data-text);
+  background: var(--terminal-header-bg);
+  padding: 0 16px;
+  position: relative;
+  z-index: 2;
+}
+
+/* === Form Styles === */
+.connection-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.form-group-small {
+  flex: 0 0 100px;
+}
+
+.form-group label {
+  color: var(--terminal-text);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.ssh-input {
+  background: var(--terminal-bg);
+  border: 1px solid var(--terminal-border);
+  color: var(--terminal-text);
+  padding: 10px 12px;
+  border-radius: var(--border-radius);
+  font-size: 14px;
+  font-family: inherit;
+  transition: var(--transition);
+}
+
+.ssh-input:focus {
+  outline: none;
+  border-color: var(--terminal-accent);
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+}
+
+.ssh-input::placeholder {
+  color: var(--terminal-text-secondary);
+}
+
+/* === Form Actions === */
+.form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+/* === Buttons === */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-primary {
+  background: var(--terminal-accent);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #005a9e;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--terminal-border);
+  color: var(--terminal-text);
+}
+
+.btn-secondary:hover {
+  background: var(--terminal-text-secondary);
+}
+
+/* === Terminal Toggle === */
 .terminal-toggle {
   position: fixed;
-  bottom: 10px;
-  right: 10px;
-  background: #007acc;
+  bottom: 20px;
+  right: 20px;
+  background: var(--terminal-accent);
   color: white;
   border: none;
-  padding: 10px 15px;
-  border-radius: 4px;
+  padding: 12px 20px;
+  border-radius: 25px;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px var(--terminal-shadow);
+  transition: var(--transition);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .terminal-toggle:hover {
   background: #005a9e;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px var(--terminal-shadow);
 }
 
-/* Xterm.js styling */
-.xterm {
-  font-feature-settings: "liga" 0;
+.terminal-badge {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 12px;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* === Resize Handle === */
+.resize-handle {
+  height: 6px;
+  background: var(--terminal-border);
+  cursor: ns-resize;
   position: relative;
-  user-select: none;
-  -ms-user-select: none;
-  -webkit-user-select: none;
 }
 
-.xterm.focus,
-.xterm:focus {
-  outline: none;
+.resize-handle:hover {
+  background: var(--terminal-accent);
+}
+
+.resize-handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 2px;
+  background: var(--terminal-text-secondary);
+  border-radius: 1px;
+}
+
+/* === Animations === */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* === Responsive Design === */
+@media (max-width: 768px) {
+  .terminal-panel {
+    height: 300px;
+  }
+  
+  .connection-modal {
+    width: 95%;
+    margin: 20px;
+  }
+  
+  .modal-body {
+    padding: 16px;
+  }
+  
+  .form-row {
+    flex-direction: column;
+  }
+  
+  .form-group-small {
+    flex: 1;
+  }
+  
+  .quick-connect-buttons {
+    grid-template-columns: 1fr;
+  }
+  
+  .terminal-tabs {
+    overflow-x: scroll;
+  }
+  
+  .terminal-tab {
+    min-width: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  .terminal-panel {
+    height: 250px;
+  }
+  
+  .terminal-header {
+    height: 36px;
+  }
+  
+  .terminal-tab {
+    padding: 6px 8px;
+    min-width: 80px;
+  }
+  
+  .tab-title {
+    font-size: 12px;
+  }
+  
+  .control-btn {
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+  
+  .terminal-toggle {
+    bottom: 16px;
+    right: 16px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
 }

@@ -1,39 +1,141 @@
 <template name="terminal">
+  <!-- Connection Modal -->
+  {{#if showConnectionModal}}
+  <div class="connection-modal-overlay">
+    <div class="connection-modal">
+      <div class="modal-header">
+        <h3>🔗 SSH Connection</h3>
+        <button class="modal-close">×</button>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Quick Connect Options -->
+        <div class="quick-connect-section">
+          <h4>Quick Connect</h4>
+          <div class="quick-connect-buttons">
+            <button class="quick-connect-btn" data-host="localhost" data-port="22" data-username="root">
+              🏠 Local Server
+            </button>
+            <button class="quick-connect-btn" data-host="192.168.1.100" data-port="22" data-username="ubuntu">
+              🖥️ Ubuntu Server
+            </button>
+            <button class="quick-connect-btn" data-host="example.com" data-port="22" data-username="user">
+              ☁️ Remote Server
+            </button>
+          </div>
+        </div>
+        
+        <div class="divider">or configure manually</div>
+        
+        <!-- SSH Configuration Form -->
+        <form class="connection-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="host">Host / IP Address</label>
+              <input type="text" name="host" id="host" class="ssh-input" 
+                     value="{{sshConfig.host}}" placeholder="localhost or IP address" required>
+            </div>
+            <div class="form-group form-group-small">
+              <label for="port">Port</label>
+              <input type="number" name="port" id="port" class="ssh-input" 
+                     value="{{sshConfig.port}}" placeholder="22" min="1" max="65535">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" name="username" id="username" class="ssh-input" 
+                   value="{{sshConfig.username}}" placeholder="root, ubuntu, user..." required>
+          </div>
+          
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" name="password" id="password" class="ssh-input" 
+                   value="{{sshConfig.password}}" placeholder="Enter password" required>
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">🚀 Connect</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {{/if}}
+
+  <!-- Terminal Panel -->
   <div class="terminal-panel {{#if isTerminalVisible}}visible{{/if}}">
-    <!-- Terminal header with tabs and controls -->
+    <!-- Terminal Header -->
     <div class="terminal-header">
       <div class="terminal-tabs">
         {{#each terminals}}
-          <div class="terminal-tab {{#if isActive}}active{{/if}}" data-id="{{id}}">
+          <div class="terminal-tab {{#if isActive}}active{{/if}} status-{{status}}" data-id="{{id}}">
+            <span class="connection-indicator"></span>
             <span class="tab-title">{{title}}</span>
             <button class="close-tab" data-id="{{id}}">×</button>
           </div>
         {{/each}}
-        <button class="add-terminal">+</button>
+        <button class="add-terminal" title="New SSH Connection">
+          <span class="add-icon">+</span>
+        </button>
       </div>
       
       <div class="terminal-controls">
-        <button class="control-btn" id="minimize-terminal">−</button>
-        <button class="control-btn" id="maximize-terminal">□</button>
-        <button class="control-btn" id="close-terminal">×</button>
+        <div class="connection-status status-{{connectionStatus}}">
+          {{#if isConnected}}
+            <span class="status-indicator">●</span> Connected
+          {{else if isConnecting}}
+            <span class="status-indicator">●</span> Connecting...
+          {{else}}
+            <span class="status-indicator">●</span> Disconnected
+          {{/if}}
+        </div>
+        <button class="control-btn" id="minimize-terminal" title="Minimize">−</button>
+        <button class="control-btn" id="maximize-terminal" title="Maximize">□</button>
+        <button class="control-btn" id="close-terminal" title="Close">×</button>
       </div>
     </div>
     
-    <!-- Terminal content area -->
+    <!-- Terminal Content -->
     <div class="terminal-content">
-      {{#each terminals}}
-        <div class="terminal-instance {{#unless isActive}}hidden{{/unless}}" data-id="{{id}}">
-          <div class="xterm-container" id="terminal-{{id}}"></div>
+      {{#if terminals.length}}
+        {{#each terminals}}
+          <div class="terminal-instance {{#unless isActive}}hidden{{/unless}}" data-id="{{id}}">
+            {{#if isTerminalConnecting}}
+              <div class="terminal-loading">
+                <div class="loading-spinner"></div>
+                <p>Connecting to {{title}}...</p>
+              </div>
+            {{/if}}
+            <div class="xterm-container" id="terminal-{{id}}"></div>
+          </div>
+        {{/each}}
+      {{else}}
+        <div class="terminal-empty">
+          <div class="empty-state">
+            <div class="empty-icon">🖥️</div>
+            <h3>No Terminal Sessions</h3>
+            <p>Click the + button to create a new SSH connection</p>
+            <button class="btn btn-primary add-terminal">
+              🚀 Create SSH Connection
+            </button>
+          </div>
         </div>
-      {{/each}}
+      {{/if}}
     </div>
     
-    <!-- Resize handle -->
+    <!-- Resize Handle -->
     <div class="resize-handle"></div>
   </div>
   
-  <!-- Toggle button when terminal is hidden -->
+  <!-- Terminal Toggle (when hidden) -->
   {{#unless isTerminalVisible}}
-    <button class="terminal-toggle">Terminal</button>
+    <button class="terminal-toggle">
+      🖥️ Terminal
+      {{#if terminals.length}}
+        <span class="terminal-badge">{{terminals.length}}</span>
+      {{/if}}
+    </button>
   {{/unless}}
 </template>

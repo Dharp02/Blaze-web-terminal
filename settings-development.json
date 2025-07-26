@@ -1,0 +1,56 @@
+{
+  "public": {
+    "app": {
+      "name": "Web Terminal",
+      "version": "1.0.0",
+      "environment": "development"
+    },
+    "socket": {
+      "url": "http://localhost:3000",
+      "reconnection": true,
+      "reconnectionAttempts": 5,
+      "reconnectionDelay": 1000
+    },
+    "terminal": {
+      "defaultCols": 80,
+      "defaultRows": 24,
+      "fontSize": 14,
+      "fontFamily": "Monaco, Menlo, 'Ubuntu Mono', 'Consolas', 'Courier New', monospace",
+      "theme": "dark"
+    }
+  },
+  "private": {
+    "ssh": {
+      "defaultHost": "localhost",
+      "defaultPort": 22,
+      "connectionTimeout": 10000,
+      "keepaliveInterval": 30000
+    },
+    "security": {
+      "enableSudoCommands": false,
+      "sessionTimeout": 1800000,
+      "maxSessionsPerUser": 5,
+      "allowedCommands": [],
+      "enableCommandLogging": true,
+      "enableSessionRecording": false
+    },
+    "server": {
+      "cors": {
+        "origin": ["http://localhost:3000", "http://127.0.0.1:3000"],
+        "credentials": true
+      },
+      "socket": {
+        "pingTimeout": 60000,
+        "pingInterval": 25000,
+        "transports": ["websocket", "polling"]
+      }
+    },
+    "logging": {
+      "level": "debug",
+      "enableTerminalLogs": true,
+      "logDirectory": "./logs",
+      "maxLogSize": "10m",
+      "maxLogFiles": 5
+    }
+  }
+}
