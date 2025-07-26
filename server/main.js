@@ -1,4 +1,3 @@
-// simple-ssh-server.js - Simple SSH Terminal WebSocket Server
 const WebSocket = require('ws');
 const { Client } = require('ssh2');
 
@@ -12,7 +11,7 @@ class SimpleTerminalServer {
 
   start() {
     this.wss = new WebSocket.Server({ port: this.port });
-    console.log(`🚀 Terminal server started on port ${this.port}`);
+    console.log(` Terminal server started on port ${this.port}`);
 
     this.wss.on('connection', (ws) => {
       const clientId = this.generateId();
@@ -30,30 +29,30 @@ class SimpleTerminalServer {
           const message = JSON.parse(data.toString());
           this.handleMessage(ws, clientId, message);
         } catch (error) {
-          console.error('❌ Error parsing message:', error);
+          console.error(' Error parsing message:', error);
         }
       });
 
       ws.on('close', () => {
-        console.log(`📱 Client disconnected: ${clientId}`);
+        console.log(` Client disconnected: ${clientId}`);
         this.cleanupClient(clientId);
       });
 
       ws.on('error', (error) => {
-        console.error(`❌ WebSocket error for client ${clientId}:`, error);
+        console.error(` WebSocket error for client ${clientId}:`, error);
       });
     });
 
     // Graceful shutdown
     process.on('SIGINT', () => {
-      console.log('\n🛑 Shutting down...');
+      console.log('\n Shutting down...');
       this.shutdown();
       process.exit(0);
     });
   }
 
   handleMessage(ws, clientId, message) {
-    console.log(`📨 Message: ${message.type}`);
+    console.log(` Message: ${message.type}`);
 
     switch (message.type) {
       case 'create_terminal':
@@ -74,8 +73,8 @@ class SimpleTerminalServer {
   createTerminal(ws, clientId, message) {
     const { sessionId, cols = 80, rows = 24, sshConfig } = message;
     
-    console.log(`🔧 Creating terminal: ${sessionId}`);
-    console.log(`🔗 Connecting to: ${sshConfig.host}:${sshConfig.port} as ${sshConfig.username}`);
+    console.log(` Creating terminal: ${sessionId}`);
+    console.log(` Connecting to: ${sshConfig.host}:${sshConfig.port} as ${sshConfig.username}`);
 
     const ssh = new Client();
     const session = {
@@ -101,7 +100,7 @@ class SimpleTerminalServer {
 
     ssh.on('ready', () => {
       clearTimeout(timeout);
-      console.log(`✅ SSH connected: ${sessionId}`);
+      console.log(` SSH connected: ${sessionId}`);
       
       ssh.shell({
         cols: cols,
@@ -109,7 +108,7 @@ class SimpleTerminalServer {
         term: 'xterm-256color'
       }, (err, stream) => {
         if (err) {
-          console.error(`❌ Shell error: ${err.message}`);
+          console.error(` Shell error: ${err.message}`);
           this.sendError(ws, sessionId, `Shell error: ${err.message}`);
           this.cleanupSession(sessionId);
           return;
@@ -151,7 +150,7 @@ class SimpleTerminalServer {
 
         // Handle stream errors
         stream.on('error', (err) => {
-          console.error(`❌ Stream error: ${err.message}`);
+          console.error(` Stream error: ${err.message}`);
           this.sendError(ws, sessionId, err.message);
         });
       });
@@ -159,7 +158,7 @@ class SimpleTerminalServer {
 
     ssh.on('error', (err) => {
       clearTimeout(timeout);
-      console.error(`❌ SSH error: ${err.message}`);
+      console.error(` SSH error: ${err.message}`);
       
       let errorMessage = 'Connection failed';
       if (err.code === 'ENOTFOUND') {
@@ -187,7 +186,7 @@ class SimpleTerminalServer {
         keepaliveInterval: 30000
       });
     } catch (error) {
-      console.error(`❌ Connect error: ${error.message}`);
+      console.error(` Connect error: ${error.message}`);
       this.sendError(ws, sessionId, error.message);
       this.cleanupSession(sessionId);
     }
@@ -201,7 +200,7 @@ class SimpleTerminalServer {
       try {
         session.stream.write(input);
       } catch (error) {
-        console.error(`❌ Input error: ${error.message}`);
+        console.error(` Input error: ${error.message}`);
       }
     }
   }
@@ -215,15 +214,15 @@ class SimpleTerminalServer {
         session.stream.setWindow(rows, cols);
         session.cols = cols;
         session.rows = rows;
-        console.log(`📐 Resized ${sessionId} to ${cols}x${rows}`);
+        console.log(` Resized ${sessionId} to ${cols}x${rows}`);
       } catch (error) {
-        console.error(`❌ Resize error: ${error.message}`);
+        console.error(` Resize error: ${error.message}`);
       }
     }
   }
 
   closeTerminal(sessionId) {
-    console.log(`🗑️ Closing terminal: ${sessionId}`);
+    console.log(` Closing terminal: ${sessionId}`);
     this.cleanupSession(sessionId);
   }
 
@@ -244,7 +243,7 @@ class SimpleTerminalServer {
         sessionId: sessionId
       }));
     } catch (error) {
-      console.error(`❌ Cleanup error: ${error.message}`);
+      console.error(` Cleanup error: ${error.message}`);
     }
 
     this.sessions.delete(sessionId);
@@ -269,7 +268,7 @@ class SimpleTerminalServer {
   }
 
   shutdown() {
-    console.log('🛑 Cleaning up...');
+    console.log(' Cleaning up...');
     
     for (const sessionId of this.sessions.keys()) {
       this.cleanupSession(sessionId);
