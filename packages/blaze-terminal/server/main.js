@@ -140,7 +140,7 @@ class SimpleTerminalServer {
 
         // Handle stream close
         stream.on('close', (code) => {
-          console.log(`🔚 Stream closed: ${sessionId}`);
+          console.log(` Stream closed: ${sessionId}`);
           ws.send(JSON.stringify({
             type: 'terminal_exit',
             sessionId: sessionId,

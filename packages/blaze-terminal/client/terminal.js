@@ -314,10 +314,12 @@ function createTerminalWithSSH(sshConfig) {
   
   const newId = Random.id();
   const currentTerminals = terminals.get();
+
+  const terminalNumber = currentTerminals.length + 1;
   
   const newTerminal = {
     id: newId,
-    title: `${sshConfig.username}@${sshConfig.host}:${sshConfig.port}`,
+    title: `Terminal ${terminalNumber}`,
     isActive: true,
     status: 'connecting'
   };
