@@ -1,5 +1,5 @@
 Package.describe({
-  name: 'blaze-terminal',
+  name: 'dharapo:blaze-terminal',
   version: '0.0.1',
   summary: 'Terminal component for Meteor with Blaze',
   git: '',

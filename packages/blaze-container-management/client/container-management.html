@@ -1,0 +1,181 @@
+<template name="containerManager">
+  <div class="active-containers-content">
+    <!-- Connection Modal -->
+    {{#if showConnectionModal}}
+      <div class="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>🔌 Connect to Container</h3>
+            <button class="modal-close" data-action="closeModal">
+              ✕
+            </button>
+          </div>
+          
+          <div class="modal-body">
+            <div class="connection-details">
+              <h4>Connection Details</h4>
+              <p><strong>Container:</strong> {{selectedContainer.name}}</p>
+              <p><strong>Host:</strong> {{selectedContainer.host}}</p>
+              <p><strong>Port:</strong> {{selectedContainer.port}}</p>
+              <p><strong>Username:</strong> root</p>
+            </div>
+            
+            <div class="password-input">
+              <label for="container-password">Password *</label>
+              <input
+                id="container-password"
+                type="password"
+                placeholder="Enter container password"
+                data-field="password"
+              />
+            </div>
+          </div>
+          
+          <div class="modal-footer">
+            <button class="modal-btn cancel-btn" data-action="closeModal">
+              Cancel
+            </button>
+            <button class="modal-btn connect-btn" data-action="connectToContainer">
+               Connect
+            </button>
+          </div>
+        </div>
+      </div>
+    {{/if}}
+
+    <!-- Header Section with Tabs -->
+    <div class="containers-header">
+      <div class="header-title">
+        <div class="tab-container">
+          <button 
+            class="tab-button {{#if isActiveTab}}active{{/if}}"
+            data-action="setActiveTab"
+            data-tab="active"
+          >
+            Active Containers
+            <span class="container-count">{{containerCount}}</span>
+          </button>
+          <button 
+            class="tab-button {{#if isFavoritesTab}}active{{/if}}"
+            data-action="setActiveTab"
+            data-tab="favorites"
+          >
+            Favorites
+            <span class="container-count">{{favoritesCount}}</span>
+          </button>
+        </div>
+      </div>
+      <div class="container-actions-header">
+        <button
+          class="import-dockerfile-icon-btn"
+          data-action="importDockerfile"
+          title="Import Dockerfile"
+        >
+          📥
+        </button>
+        <input
+          type="file"
+          id="dockerfile-upload"
+          style="display: none"
+          accept=".dockerfile,.Dockerfile,Dockerfile,text/plain"
+        />
+        <button
+          class="create-container-btn {{#if isCreating}}disabled{{/if}}"
+          data-action="createContainer"
+        >
+          {{#if isCreating}}Creating...{{else}}Create{{/if}}
+        </button>
+      </div>
+    </div>
+
+    <!-- Containers Grid -->
+    <div class="containers-grid">
+      {{#if hasContainers}}
+        {{#each displayedContainers}}
+          <div class="container-card">
+            <div class="container-card-header">
+              <div class="container-name">
+                <span class="name-text">{{name}}</span>
+                <span class="container-id">{{truncatedId}}</span>
+              </div>
+              <div class="container-actions-top">
+                <button 
+                  class="favorite-btn {{#if isFavorite}}favorited{{/if}}"
+                  data-action="toggleFavorite"
+                  data-container-id="{{id}}"
+                  title="{{#if isFavorite}}Remove from favorites{{else}}Add to favorites{{/if}}"
+                >
+                  {{#if isFavorite}}★{{else}}☆{{/if}}
+                </button>
+                <button
+                  class="stop-btn"
+                  data-action="stopContainer"
+                  data-container-id="{{id}}"
+                  data-container-name="{{name}}"
+                  title="Stop container: {{name}}"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div class="container-info">
+              <div class="info-row">
+                <span class="info-label">Image:</span>
+                <span class="info-value">{{image}}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Status:</span>
+                <span class="status-badge {{statusClass}}">{{status}}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">SSH Port:</span>
+                <span 
+                  class="port-value clickable-port" 
+                  data-action="copyPort"
+                  data-port="{{publicPort}}"
+                  data-container-name="{{name}}"
+                  title="Click to copy port number"
+                >
+                  {{publicPort}} 📋
+                </span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Created:</span>
+                <span class="info-value">{{created}}</span>
+              </div>
+            </div>
+
+            <div class="container-actions">
+              <button 
+                class="action-btn connect-btn" 
+                data-action="connectToContainer"
+                data-container-id="{{id}}"
+                data-container-name="{{name}}"
+                data-container-port="{{publicPort}}"
+                data-container-host="localhost"
+                title="Connect to {{name}} on port {{publicPort}}"
+              >
+                🔌 Connect
+              </button>
+            </div>
+          </div>
+        {{/each}}
+      {{else}}
+        <div class="no-containers">
+          <div class="no-containers-icon">📦</div>
+          <h4>
+            {{#if isActiveTab}}No Active Containers{{else}}No Favorite Containers{{/if}}
+          </h4>
+          <p>
+            {{#if isActiveTab}}
+              Click "Create" to start a new SSH container or import a Dockerfile
+            {{else}}
+              Star containers to add them to your favorites
+            {{/if}}
+          </p>
+        </div>
+      {{/if}}
+    </div>
+  </div>
+</template>

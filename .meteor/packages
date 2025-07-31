@@ -24,4 +24,5 @@ templating
 random
 tracker
 jquery
-blaze-terminal
+dharapo:blaze-container-management
+dharapo:blaze-terminal
