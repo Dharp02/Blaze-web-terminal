@@ -112,6 +112,55 @@ Template.containerManager.events({
       // Show success message
       alert(` Container "${containerName}" has been closed and deleted successfully!`);
     });
+  },
+
+  "click .favorite-btn" : function(event,target){
+    const containerId = event.currentTarget.getAttribute('data-container-id');
+    const currentFavoriteState = $(event.currentTarget).hasClass('favorited');
+    const newFavoriteState = !currentFavoriteState;
+    
+    // Disable button during operation
+    const btn = $(event.currentTarget);
+    btn.prop('disabled', true);
+    
+    Meteor.call('toggleContainerFavorite', containerId, newFavoriteState, function(err, result) {
+      // Re-enable button
+      btn.prop('disabled', false);
+      
+      if (err) {
+        console.error('Error toggling favorite:', err);
+        alert('Failed to update favorite: ' + err.reason);
+        return;
+      }
+      
+      console.log('Favorite toggled successfully:', result);
+      
+      // Update the container in the display list
+      const currentContainers = displayedContainers.get();
+      const updatedContainers = currentContainers.map(container => {
+        if (container.id === containerId) {
+          return {
+            ...container,
+            isFavorite: newFavoriteState
+          };
+        }
+        return container;
+      });
+      
+      displayedContainers.set(updatedContainers);
+      
+      // Show feedback
+      const message = newFavoriteState ? 'Added to favorites ' : 'Removed from favorites';
+      console.log(message);
+    });
+
+
+
+
+
+
+
+
   }
 
   

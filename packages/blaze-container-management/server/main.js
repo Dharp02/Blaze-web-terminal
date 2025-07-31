@@ -143,6 +143,22 @@ Meteor.methods({
                
 
                    
+    },
+    toggleContainerFavorite : async function(containerId, isFavorite){
+        try {
+      console.log(` Toggling favorite for container: ${containerId} to ${isFavorite}`);
+      
+      return {
+        success: true,
+        containerId: containerId,
+        isFavorite: isFavorite,
+        message: isFavorite ? 'Container added to favorites' : 'Container removed from favorites'
+      };
+      
+    } catch(error) {
+      console.error(' Error toggling favorite:', error);
+      throw new Meteor.Error('toggle-favorite-failed', error.message);
+    }
     }  
         
 
