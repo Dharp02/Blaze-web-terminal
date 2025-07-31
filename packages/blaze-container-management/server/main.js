@@ -115,5 +115,37 @@ Meteor.methods({
             console.error(' Error listing containers:', error);
             throw new Meteor.Error('list-containers-failed', error.message);
         }
-   }
+   },
+
+   stopContainer: async function(containerId) {
+        try {
+        console.log(` Closing container: ${containerId}`);
+        const container = docker.getContainer(containerId);
+        try {
+            await container.stop();
+            console.log(` Container ${containerId} stopped`);
+        } catch(stopError) {
+            // Container might already be stopped, that's okay
+            console.log(` Container might already be stopped: ${stopError.message}`);
+        }
+        await container.remove();
+        console.log(` Container ${containerId} deleted successfully`);
+        
+        return {
+            success: true,
+            message: 'Container closed and deleted successfully'
+        };
+        
+        } catch(error) {
+        console.error(' Error closing container:', error);
+        throw new Meteor.Error('close-container-failed', error.message);
+        }
+               
+
+                   
+    }  
+        
+
+   
+
 });

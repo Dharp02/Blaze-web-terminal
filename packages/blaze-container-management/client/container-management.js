@@ -76,5 +76,53 @@ Template.containerManager.events({
       
       
     });
+  },
+
+  "click .stop-btn ": function(event, template){
+    const containerId = event.currentTarget.getAttribute('data-container-id');
+    const containerName = event.currentTarget.getAttribute('data-container-name');
+    
+    // Confirm before deleting
+    if (!confirm(`Are you sure you want to close and delete container "${containerName}"?\n\nThis action cannot be undone.`)) {
+      return;
+    }
+    
+    // Disable the button during deletion
+    const btn = $(event.currentTarget);
+    btn.prop('disabled', true).text('Closing...');
+
+    Meteor.call('stopContainer', containerId, function(err, result) {
+      // Re-enable button
+      btn.prop('disabled', false).text('×');
+      
+      if (err) {
+        console.error('Error closing container:', err);
+        alert('Failed to close container: ' + err.reason);
+        return;
+      }
+      
+      console.log('Container closed successfully:', result);
+      
+      // Remove container from the display list
+      const currentContainers = displayedContainers.get();
+      const updatedContainers = currentContainers.filter(container => container.id !== containerId);
+      displayedContainers.set(updatedContainers);
+      hasContainers.set(updatedContainers.length > 0);
+      
+      // Show success message
+      alert(` Container "${containerName}" has been closed and deleted successfully!`);
+    });
   }
+
+  
+  
+
+
+
+
+
+
+
+
+
 });
