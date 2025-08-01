@@ -159,9 +159,83 @@ Meteor.methods({
       console.error(' Error toggling favorite:', error);
       throw new Meteor.Error('toggle-favorite-failed', error.message);
     }
-    }  
-        
+    },
 
-   
+    buildImageFromDockerfile: async function(dockerfileContent, fileName) {
+    try {
+      console.log(` Building image from imported Dockerfile: ${fileName}`);
+      
+      const fs = require('fs');
+      const os = require('os');
+      const path = require('path');
+      
+      // Create a temporary directory for the build
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dockerfile-import-'));
+      const dockerfilePath = path.join(tempDir, 'Dockerfile');
+      
+      // Write the Dockerfile content to temp directory
+      fs.writeFileSync(dockerfilePath, dockerfileContent);
+      
+      // Generate a unique image name
+      const timestamp = Date.now();
+      const imageName = `imported-image-${timestamp}`;
+      
+      console.log(` Temp directory: ${tempDir}`);
+      console.log(` Image name: ${imageName}`);
+      
+      // Build the image
+      const stream = await docker.buildImage({
+        context: tempDir,
+        src: ['Dockerfile']
+      }, {
+        t: imageName
+      });
+      
+      // Wait for build to complete
+      await new Promise((resolve, reject) => {
+        docker.modem.followProgress(stream, 
+          (progress) => {
+            if (progress.stream) {
+              const message = progress.stream.trim();
+              if (message && (
+                message.includes('Step ') || 
+                message.includes('Successfully built') ||
+                message.includes('Successfully tagged'))) {
+                console.log('', message);
+              }
+            }
+            if (progress.error) {
+              console.error(' BUILD ERROR:', progress.error);
+            }
+          },
+          (err, res) => {
+            if (err) {
+              console.error(' Build failed:', err);
+              reject(err);
+            } else {
+              console.log(' Image build complete');
+              resolve(res);
+            }
+          }
+        );
+      });
+      
+      // Clean up temp directory
+      fs.rmSync(tempDir, { recursive: true, force: true });
+      
+      return {
+        success: true,
+        imageName: imageName,
+        originalFileName: fileName,
+        message: `Image built successfully from ${fileName}`
+      };
+      
+    } catch(error) {
+      console.error(' Error building image from Dockerfile:', error);
+      throw new Meteor.Error('dockerfile-import-failed', error.message);
+    }
+  }
 
-});
+
+
+})

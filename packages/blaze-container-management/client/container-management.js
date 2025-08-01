@@ -184,7 +184,7 @@ Template.containerManager.events({
   "click .clickable-port[data-action='copyPort']": function(event, template) {
    const port = event.currentTarget.getAttribute('data-port');
   
-  if (navigator.clipboard && navigator.clipboard.writeText) {
+   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(port).then(() => {
       // Just log to console instead of fancy notification
       console.log(` Port ${port} copied to clipboard!`);
@@ -201,8 +201,64 @@ Template.containerManager.events({
     }).catch((err) => {
       console.error('Failed to copy port:', err);
     });
-  }
-}
+    }
+  },
+
+  "click .import-dockerfile-icon-btn[data-action='importDockerfile']": function(event, template) {
+    // Trigger the hidden file input
+    template.$('#dockerfile-upload').click();
+  },
+
+  "change #dockerfile-upload": function(event, template) {
+    const file = event.target.files[0];
+    
+    if (!file) {
+      return; // No file selected
+    }
+
+    console.log(` Importing Dockerfile: ${file.name}`);
+
+    // Read the file content
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+      const dockerfileContent = e.target.result;
+      console.log('Dockerfile content loaded');
+      
+      // Call server method to build image from content
+      template.$('.import-dockerfile-icon-btn').prop('disabled', true).text('📤');
+      
+      Meteor.call('buildImageFromDockerfile', dockerfileContent, file.name, function(err, result) {
+        // Re-enable button
+        template.$('.import-dockerfile-icon-btn').prop('disabled', false).text('📥');
+        
+        if (err) {
+          console.error('Error building image from Dockerfile:', err);
+          alert('Failed to import Dockerfile: ' + err.reason);
+          return;
+        }
+        
+        console.log('Image built successfully:', result);
+        alert(` Dockerfile imported successfully!\nImage: ${result.imageName}`);
+        
+        // Clear the file input for next use
+        template.$('#dockerfile-upload').val('');
+      });
+    };
+    
+    reader.onerror = function() {
+      console.error('Error reading file');
+      alert('Error reading Dockerfile. Please try again.');
+    };
+    
+    // Read the file as text
+    reader.readAsText(file);
+  },
+
+
+
+
+
   
 
 
