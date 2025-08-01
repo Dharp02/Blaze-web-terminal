@@ -5,6 +5,7 @@ import './container-management.css'
 
 const displayedContainers = new ReactiveVar([]);
 const hasContainers = new ReactiveVar(false);
+const currentTab = new ReactiveVar('active');
 
 // Function to load containers
 function loadContainers() {
@@ -27,13 +28,29 @@ Template.containerManager.onCreated(function() {
 
 Template.containerManager.helpers({
   displayedContainers() {
-    return displayedContainers.get();
+     const allContainers = displayedContainers.get();
+     const activeTab = currentTab.get();
+    
+    if (activeTab === 'favorites') {
+      // Show only favorited containers
+      return allContainers.filter(container => container.isFavorite === true);
+    }
+    
+    return allContainers;
   },
   hasContainers() {
-    return hasContainers.get();
+    const activeTab = currentTab.get();
+    const allContainers = displayedContainers.get();
+    
+    if (activeTab === 'favorites') {
+      const favoriteContainers = allContainers.filter(container => container.isFavorite === true);
+      return favoriteContainers.length > 0;
+    }
+    
+    return allContainers.length > 0;
   },
   isActiveTab() {
-    return true;
+    return currentTab.get() === 'active';
   },
   isCreating() {
     return false;
@@ -45,7 +62,7 @@ Template.containerManager.helpers({
     return displayedContainers.get().filter(container => container.isFavorite).length;
   },
   isFavoritesTab() {
-    return false;
+    return currentTab.get() === 'favorites';
   }
 });
 
@@ -155,13 +172,14 @@ Template.containerManager.events({
     });
 
 
+  },
 
-
-
-
-
-
-  }
+  "click .tab-button": function(event, template) {
+    const tab = event.currentTarget.getAttribute('data-tab');
+    currentTab.set(tab);
+    
+    console.log(`Switched to ${tab} tab`);
+  },
 
   
   
