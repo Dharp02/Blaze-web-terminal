@@ -181,7 +181,28 @@ Template.containerManager.events({
     console.log(`Switched to ${tab} tab`);
   },
 
+  "click .clickable-port[data-action='copyPort']": function(event, template) {
+   const port = event.currentTarget.getAttribute('data-port');
   
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(port).then(() => {
+      // Just log to console instead of fancy notification
+      console.log(` Port ${port} copied to clipboard!`);
+      
+      // Simple visual feedback on the element itself
+      const element = $(event.currentTarget);
+      const originalContent = element.html();
+      element.html(`${port} `);
+      
+      setTimeout(() => {
+        element.html(originalContent);
+      }, 1500);
+      
+    }).catch((err) => {
+      console.error('Failed to copy port:', err);
+    });
+  }
+}
   
 
 
