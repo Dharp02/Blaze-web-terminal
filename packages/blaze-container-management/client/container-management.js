@@ -7,6 +7,19 @@ const displayedContainers = new ReactiveVar([]);
 const hasContainers = new ReactiveVar(false);
 const currentTab = new ReactiveVar('active');
 
+
+function saveFavorites(containers) {
+  const favorites = containers
+    .filter(c => c.isFavorite)
+    .map(c => c.id);
+  localStorage.setItem('containerFavorites', JSON.stringify(favorites));
+}
+
+function loadFavorites() {
+  const saved = localStorage.getItem('containerFavorites');
+  return saved ? JSON.parse(saved) : [];
+}
+
 // Function to load containers
 function loadContainers() {
   Meteor.call('listContainers', function(err, containers) {
@@ -15,9 +28,16 @@ function loadContainers() {
       return;
     }
     
-    displayedContainers.set(containers);
-    hasContainers.set(containers.length > 0);
-    console.log(' Loaded containers:', containers);
+    // Restore favorite status from localStorage
+    const favoriteIds = loadFavorites();
+    const containersWithFavorites = containers.map(container => ({
+      ...container,
+      isFavorite: favoriteIds.includes(container.id)
+    }));
+    
+    displayedContainers.set(containersWithFavorites);
+    hasContainers.set(containersWithFavorites.length > 0);
+    console.log(' Loaded containers with favorites restored');
   });
 }
 
@@ -49,6 +69,7 @@ Template.containerManager.helpers({
     
     return allContainers.length > 0;
   },
+  
   isActiveTab() {
     return currentTab.get() === 'active';
   },
@@ -133,24 +154,16 @@ Template.containerManager.events({
 
   "click .favorite-btn" : function(event,target){
     const containerId = event.currentTarget.getAttribute('data-container-id');
-    const currentFavoriteState = $(event.currentTarget).hasClass('favorited');
-    const newFavoriteState = !currentFavoriteState;
-    
-    // Disable button during operation
     const btn = $(event.currentTarget);
+    const currentFavoriteState = btn.hasClass('favorited');
+    const newFavoriteState = !currentFavoriteState;
+    // Disable button during operation
+    if (newFavoriteState) {
+    btn.addClass('favorited');
+  } else {
+    btn.removeClass('favorited');
+  }
     btn.prop('disabled', true);
-    
-    Meteor.call('toggleContainerFavorite', containerId, newFavoriteState, function(err, result) {
-      // Re-enable button
-      btn.prop('disabled', false);
-      
-      if (err) {
-        console.error('Error toggling favorite:', err);
-        alert('Failed to update favorite: ' + err.reason);
-        return;
-      }
-      
-      console.log('Favorite toggled successfully:', result);
       
       // Update the container in the display list
       const currentContainers = displayedContainers.get();
@@ -165,11 +178,11 @@ Template.containerManager.events({
       });
       
       displayedContainers.set(updatedContainers);
-      
+      saveFavorites(updatedContainers);
       // Show feedback
       const message = newFavoriteState ? 'Added to favorites ' : 'Removed from favorites';
       console.log(message);
-    });
+    
 
 
   },

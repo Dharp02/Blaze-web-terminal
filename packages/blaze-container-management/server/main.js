@@ -3,6 +3,8 @@ import Docker from 'dockerode';
 import path from 'path';
 
 const docker = new Docker();
+const fs = require('fs');
+const os = require('os');
 
 Meteor.methods({
    createContainer: async function() {
@@ -144,30 +146,10 @@ Meteor.methods({
 
                    
     },
-    toggleContainerFavorite : async function(containerId, isFavorite){
-        try {
-      console.log(` Toggling favorite for container: ${containerId} to ${isFavorite}`);
-      
-      return {
-        success: true,
-        containerId: containerId,
-        isFavorite: isFavorite,
-        message: isFavorite ? 'Container added to favorites' : 'Container removed from favorites'
-      };
-      
-    } catch(error) {
-      console.error(' Error toggling favorite:', error);
-      throw new Meteor.Error('toggle-favorite-failed', error.message);
-    }
-    },
-
+   
     buildImageFromDockerfile: async function(dockerfileContent, fileName) {
     try {
       console.log(` Building image from imported Dockerfile: ${fileName}`);
-      
-      const fs = require('fs');
-      const os = require('os');
-      const path = require('path');
       
       // Create a temporary directory for the build
       const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dockerfile-import-'));
