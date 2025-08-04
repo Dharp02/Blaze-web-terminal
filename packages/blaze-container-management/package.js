@@ -1,7 +1,7 @@
 Package.describe({
   name: 'dharapo:blaze-container-management',
   version: '0.0.1',
-  summary: '',
+  summary: 'Docker container management with Blaze UI for Meteor applications',
   git: '',
   documentation: 'README.md'
 });
@@ -15,6 +15,18 @@ Package.onUse(function(api) {
     'client/container-management.html',
     'client/container-management.css'
   ], 'client');
+
+   api.addAssets([
+    'server/Dockerfile',
+  ], 'server');
+
+  Npm.depends({
+  'dockerode': '4.0.2'  // Use latest stable version
+});
+
+
+
+
   api.mainModule('client/container-management.js', 'client');
 
   api.use('ecmascript', 'server');
@@ -30,6 +42,6 @@ Package.onUse(function(api) {
 Package.onTest(function(api) {
   api.use('ecmascript');
   api.use('tinytest');
-  api.use('blaze-container-management');
-  api.mainModule('blaze-container-management-tests.js');
+  api.use('dharapo:blaze-container-management');
+ 
 });

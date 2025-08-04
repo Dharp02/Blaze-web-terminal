@@ -9,8 +9,8 @@ RUN apt-get update && \
 # Create the directory for the SSH daemon to run
 RUN mkdir /var/run/sshd
 
-# Set a root password (change 'password123' to your secure password)
-RUN echo 'root:password123' | chpasswd
+# Set a root password (change 'changeme' to your secure password)
+RUN echo 'root:changeme' | chpasswd
 
 # Allow root login with password by modifying sshd_config
 RUN sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config

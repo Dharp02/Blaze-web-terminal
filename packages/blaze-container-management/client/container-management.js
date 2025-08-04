@@ -6,7 +6,7 @@ import './container-management.css'
 const displayedContainers = new ReactiveVar([]);
 const hasContainers = new ReactiveVar(false);
 const currentTab = new ReactiveVar('active');
-
+const favoriteFilter = new ReactiveVar(false);
 
 function saveFavorites(containers) {
   const favorites = containers
@@ -50,6 +50,7 @@ Template.containerManager.helpers({
   displayedContainers() {
      const allContainers = displayedContainers.get();
      const activeTab = currentTab.get();
+     favoriteFilter.get();
     
     if (activeTab === 'favorites') {
       // Show only favorited containers
@@ -61,6 +62,7 @@ Template.containerManager.helpers({
   hasContainers() {
     const activeTab = currentTab.get();
     const allContainers = displayedContainers.get();
+    favoriteFilter.get();
     
     if (activeTab === 'favorites') {
       const favoriteContainers = allContainers.filter(container => container.isFavorite === true);
@@ -80,6 +82,7 @@ Template.containerManager.helpers({
     return displayedContainers.get().length;
   },
   favoritesCount() {
+    favoriteFilter.get();
     return displayedContainers.get().filter(container => container.isFavorite).length;
   },
   isFavoritesTab() {
@@ -152,18 +155,18 @@ Template.containerManager.events({
     });
   },
 
-  "click .favorite-btn" : function(event,target){
+  "click .favorite-btn" : function(event,template){
     const containerId = event.currentTarget.getAttribute('data-container-id');
     const btn = $(event.currentTarget);
-    const currentFavoriteState = btn.hasClass('favorited');
+    const currentFavoriteState = btn.data('favorited') === true;
     const newFavoriteState = !currentFavoriteState;
     // Disable button during operation
     if (newFavoriteState) {
-    btn.addClass('favorited');
+    btn.addClass('favorited').attr('title', 'Remove from favorites').data('favorited', true);
   } else {
-    btn.removeClass('favorited');
+    btn.removeClass('favorited').attr('title', 'Add to favorites').data('favorited', false);
   }
-    btn.prop('disabled', true);
+    
       
       // Update the container in the display list
       const currentContainers = displayedContainers.get();
@@ -174,11 +177,13 @@ Template.containerManager.events({
             isFavorite: newFavoriteState
           };
         }
+        
         return container;
       });
       
       displayedContainers.set(updatedContainers);
       saveFavorites(updatedContainers);
+      favoriteFilter.set(!favoriteFilter.get());
       // Show feedback
       const message = newFavoriteState ? 'Added to favorites ' : 'Removed from favorites';
       console.log(message);

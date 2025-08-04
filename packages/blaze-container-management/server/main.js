@@ -74,7 +74,7 @@ Meteor.methods({
             
             console.log(` SSH available on localhost:${assignedPort}`);
             console.log(` Username: root`);
-            console.log(` Password: password123`);
+            console.log(` Password: changeme`);
 
             return {
                 success: true,
