@@ -9,8 +9,13 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.20.7",
+    "dockerode": "^4.0.7",
+    "express": "^5.1.0",
     "jquery": "^3.7.1",
     "meteor-node-stubs": "^1.2.5",
+    "multer": "^2.0.2",
+    "ssh2": "^1.16.0",
+    "ws": "^8.18.3",
     "xterm": "^5.3.0",
     "xterm-addon-fit": "^0.8.0"
   },
@@ -23,5 +28,14 @@
   },
   "devDependencies": {
     "@types/meteor": "^2.9.1"
-  }
+  },
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

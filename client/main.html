@@ -11,12 +11,7 @@
 
 <template name="terminalApp">
   <div class="app-container">
-    <!-- Main content area -->
-    <div class="content-area">
-      <h1>Terminal Application</h1>
-      <p>Your main application content goes here...</p>
-    </div>
-    
+    {{> containerManager}}
     <!-- Terminal panel (similar to VS Code) -->
     {{> terminal}}
   </div>
