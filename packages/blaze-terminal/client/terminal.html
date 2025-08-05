@@ -1,3 +1,4 @@
+<!-- packages/blaze-terminal/client/terminal.html -->
 <template name="terminal">
   <!-- Connection Modal -->
   {{#if showConnectionModal}}
@@ -9,6 +10,35 @@
       </div>
       
       <div class="modal-body">
+        <!-- Saved Connections Section -->
+        {{#if hasSavedConnections}}
+        <div class="saved-connections-section">
+          <div class="saved-connections-header">
+            <h4> Saved Connections</h4>
+            <button class="toggle-saved-connections btn-link">
+              {{#if showSaveCredentials}}Hide{{else}}Show{{/if}}
+            </button>
+          </div>
+          
+          {{#if showSaveCredentials}}
+          <div class="saved-connections-list">
+            {{#each savedConnections}}
+            <div class="saved-connection-item" data-connection-id="{{id}}">
+              <div class="connection-info">
+                <div class="connection-name">{{name}}</div>
+                <div class="connection-details">{{username}}@{{host}}:{{port}}</div>
+              </div>
+              <button class="delete-saved-connection" data-connection-id="{{id}}" title="Delete">
+                
+              </button>
+            </div>
+            {{/each}}
+          </div>
+          <div class="saved-connections-divider"></div>
+          {{/if}}
+        </div>
+        {{/if}}
+        
         <!-- SSH Configuration Form -->
         <form class="connection-form">
           <div class="form-row">
@@ -20,7 +50,7 @@
             <div class="form-group form-group-small">
               <label for="port">Port</label>
               <input type="number" name="port" id="port" class="ssh-input" 
-                      placeholder="22" min="1" max="65535">
+                      placeholder="22" min="1" max="65535" value="22">
             </div>
           </div>
           
@@ -37,8 +67,18 @@
           </div>
           
           <div class="form-actions">
-            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
-            <button type="submit" class="btn btn-primary"> Connect</button>
+            <div class="form-actions-left">
+              <button type="button" class="btn btn-secondary clear-form-btn">
+                 Clear
+              </button>
+              <button type="button" class="btn btn-save save-connection-btn">
+                 Save
+              </button>
+            </div>
+            <div class="form-actions-right">
+              <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+              <button type="submit" class="btn btn-primary"> Connect</button>
+            </div>
           </div>
         </form>
       </div>
