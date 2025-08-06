@@ -10,6 +10,16 @@
       </div>
       
       <div class="modal-body">
+        <!-- NEW: Container Connection Section -->
+        <div class="container-connection-section">
+          <button type="button" class="btn btn-primary connect-containers-btn">
+             Connect to Containers
+          </button>
+          <div class="section-divider">
+            <span>OR</span>
+          </div>
+        </div>
+
         <!-- Saved Connections Section -->
         {{#if hasSavedConnections}}
         <div class="saved-connections-section">
@@ -29,7 +39,7 @@
                 <div class="connection-details">{{username}}@{{host}}:{{port}}</div>
               </div>
               <button class="delete-saved-connection" data-connection-id="{{id}}" title="Delete">
-                
+                ×
               </button>
             </div>
             {{/each}}
@@ -38,7 +48,7 @@
           {{/if}}
         </div>
         {{/if}}
-        
+
         <!-- SSH Configuration Form -->
         <form class="connection-form">
           <div class="form-row">
@@ -77,10 +87,25 @@
             </div>
             <div class="form-actions-right">
               <button type="button" class="btn btn-secondary modal-close">Cancel</button>
-              <button type="submit" class="btn btn-primary"> Connect</button>
+              <button type="submit" class="btn btn-primary">
+                 Connect
+              </button>
             </div>
           </div>
         </form>
+
+        <!-- Container Mode Status (shows when in container mode) -->
+        {{#if isContainerMode}}
+        <div class="container-mode-status">
+          <div class="status-message">
+            <span class="status-icon"></span>
+            <span class="status-text">Checking for your container...</span>
+          </div>
+          <button type="button" class="btn btn-secondary reset-mode-btn">
+            ← Back to SSH Mode
+          </button>
+        </div>
+        {{/if}}
       </div>
     </div>
   </div>

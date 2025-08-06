@@ -15,6 +15,7 @@ const connectionStatus = new ReactiveVar('disconnected');
 const savedConnections = new ReactiveVar([]);
 const selectedSavedConnection = new ReactiveVar(null);
 const showSaveCredentials = new ReactiveVar(false);
+const isContainerMode = new ReactiveVar(false);
 
 // Terminal instances and WebSocket connections
 const terminalInstances = new Map();
@@ -172,6 +173,9 @@ Template.terminal.helpers({
   selectedSavedConnection() {
     return selectedSavedConnection.get();
   },
+  isContainerMode() {
+    return isContainerMode.get();
+  },
   
   terminals() {
     return terminals.get().map(term => ({
@@ -193,6 +197,15 @@ Template.terminal.events({
     loadSavedConnections();
     showSaveCredentials.set(savedConnections.get().length > 0);
     showConnectionModal.set(true);
+  },
+
+  'click .connect-containers-btn'(event) {
+    event.preventDefault();
+    isContainerMode.set(true);
+    
+    // TODO: Step 2 - Handle container connection
+    console.log('🐳 Connect to Containers clicked');
+    handleContainerConnection();
   },
   
   'click .terminal-tab'(event) {
@@ -277,7 +290,7 @@ Template.terminal.events({
       // Show success feedback
       const btn = event.currentTarget;
       const originalText = btn.textContent;
-      btn.textContent = '✅ Saved!';
+      btn.textContent = ' Saved!';
       btn.style.background = '#4caf50';
       
       setTimeout(() => {
