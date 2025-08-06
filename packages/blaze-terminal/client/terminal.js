@@ -16,6 +16,7 @@ const savedConnections = new ReactiveVar([]);
 const selectedSavedConnection = new ReactiveVar(null);
 const showSaveCredentials = new ReactiveVar(false);
 const isContainerMode = new ReactiveVar(false);
+const activeConnectionTab = new ReactiveVar('containers');
 
 // Terminal instances and WebSocket connections
 const terminalInstances = new Map();
@@ -187,6 +188,18 @@ Template.terminal.helpers({
   
   sshConfig() {
     return defaultSSHConfig.get();
+  },
+
+   isContainerTab() {
+    return activeConnectionTab.get() === 'containers';
+  },
+  
+  isSSHTab() {
+    return activeConnectionTab.get() === 'ssh';
+  },
+  
+  isSavedTab() {
+    return activeConnectionTab.get() === 'saved';
   }
 });
 
@@ -204,7 +217,7 @@ Template.terminal.events({
     isContainerMode.set(true);
     
     // TODO: Step 2 - Handle container connection
-    console.log('🐳 Connect to Containers clicked');
+    console.log(' Connect to Containers clicked');
     handleContainerConnection();
   },
   
@@ -350,6 +363,27 @@ Template.terminal.events({
     showSaveCredentials.set(!isVisible);
   },
   
+
+   'click .connection-tab'(event) {
+    const tabName = event.currentTarget.dataset.tab;
+    activeConnectionTab.set(tabName);
+    
+    // Update visual state
+    document.querySelectorAll('.connection-tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+      pane.classList.remove('active');
+    });
+    
+    event.currentTarget.classList.add('active');
+    document.querySelector(`.${tabName}-pane`).classList.add('active');
+  },
+
+  'click .reset-mode-btn'(event) {
+    event.preventDefault();
+    isContainerMode.set(false);
+  }
 
 
 });

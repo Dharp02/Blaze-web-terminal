@@ -619,67 +619,268 @@
   }
 }
 
-/* Update saved connection item to position the delete button properly */
-.saved-connection-item {
+/* Connection Modal Tabs */
+.connection-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--terminal-border);
+  margin-bottom: 0;
+  background: var(--terminal-header-bg);
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.connection-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--terminal-text-secondary);
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: var(--transition);
+  border-bottom: 3px solid transparent;
+}
+
+.connection-tab:hover {
+  background: var(--terminal-bg);
+  color: var(--terminal-text);
+}
+
+.connection-tab.active {
+  background: var(--terminal-bg);
+  color: var(--terminal-accent);
+  border-bottom-color: var(--terminal-accent);
+}
+
+/* Tab Content */
+.tab-content {
+  min-height: 300px;
+  padding: 24px;
+}
+
+.tab-pane {
+  animation: fadeIn 0.2s ease;
+}
+
+/* Container Tab Styles */
+.container-status-card {
+  background: var(--terminal-header-bg);
+  border: 1px solid var(--terminal-border);
+  border-radius: var(--border-radius);
+  padding: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  background: var(--terminal-bg);
+}
+
+.container-info .container-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--terminal-text);
+  margin-bottom: 6px;
+}
+
+.container-details {
+  font-size: 14px;
+  color: var(--terminal-text-secondary);
+  margin-bottom: 4px;
+}
+
+.container-created {
+  font-size: 12px;
+  color: var(--terminal-text-secondary);
+}
+
+.status-badge.running {
+  color: var(--terminal-success);
+}
+
+.no-container-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.container-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.no-container-state h4 {
+  color: var(--terminal-text);
+  margin: 0 0 8px 0;
+}
+
+.no-container-state p {
+  color: var(--terminal-text-secondary);
+  margin: 0 0 24px 0;
+}
+
+/* SSH Tab Styles */
+.ssh-connection-form {
+  max-width: 500px;
+}
+
+.ssh-options {
+  margin: 16px 0;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--terminal-text);
+}
+
+.save-connection-checkbox {
+  margin: 0;
+}
+
+/* Saved Connections Tab */
+.saved-connections-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.saved-connections-header h4 {
+  margin: 0;
+  color: var(--terminal-text);
+}
+
+.saved-connections-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.saved-connection-card {
+  background: var(--terminal-header-bg);
   border: 1px solid var(--terminal-border);
   border-radius: var(--border-radius);
-  margin-bottom: 8px;
+  padding: 16px;
   transition: var(--transition);
-  position: relative;
 }
 
-.saved-connection-item:hover {
-  background: var(--terminal-border);
+.saved-connection-card:hover {
+  border-color: var(--terminal-accent);
 }
 
-.connection-info {
-  flex: 1;
-  min-width: 0; /* Allow text truncation */
+.connection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .connection-name {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--terminal-text);
-  margin-bottom: 2px;
 }
 
-.connection-details {
-  font-size: 12px;
-  color: var(--terminal-text-secondary);
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Courier New', monospace;
-}
-
-/* Delete button styling - small cross in corner */
-.delete-saved-connection {
+.delete-connection {
   background: none;
   border: none;
   color: var(--terminal-text-secondary);
   cursor: pointer;
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 18px;
   padding: 4px 6px;
   border-radius: 3px;
   transition: var(--transition);
-  min-width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 8px;
 }
 
-.delete-saved-connection:hover {
+.delete-connection:hover {
   background: var(--terminal-error);
   color: white;
-  transform: scale(1.1);
 }
 
-.delete-saved-connection:active {
-  transform: scale(0.95);
+.connection-details {
+  margin-bottom: 16px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.detail-item .label {
+  color: var(--terminal-text-secondary);
+  font-weight: 500;
+}
+
+.detail-item .value {
+  color: var(--terminal-text);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.no-saved-connections {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.saved-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.no-saved-connections h4 {
+  color: var(--terminal-text);
+  margin: 0 0 8px 0;
+}
+
+.no-saved-connections p {
+  color: var(--terminal-text-secondary);
+  margin: 0;
+}
+
+/* Container Loading */
+.container-loading {
+  text-align: center;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+/* Modal Footer */
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid var(--terminal-border);
+  background: var(--terminal-header-bg);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .connection-tab {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  
+  .tab-content {
+    padding: 16px;
+  }
+  
+  .container-status-card {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+}
+
+/* Tab Pane Display */
+.tab-pane {
+  display: none;
+  animation: fadeIn 0.2s ease;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+/* Reset mode button */
+.reset-mode-btn {
+  margin-top: 16px;
 }
