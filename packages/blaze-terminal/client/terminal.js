@@ -12,6 +12,11 @@ const activeTerminalId = new ReactiveVar(null);
 const isTerminalVisible = new ReactiveVar(true);
 const showConnectionModal = new ReactiveVar(false);
 const connectionStatus = new ReactiveVar('disconnected');
+const savedConnections = new ReactiveVar([]);
+const selectedSavedConnection = new ReactiveVar(null);
+const showSaveCredentials = new ReactiveVar(false);
+const isContainerMode = new ReactiveVar(false);
+const activeConnectionTab = new ReactiveVar('containers');
 
 // Terminal instances and WebSocket connections
 const terminalInstances = new Map();
@@ -31,9 +36,102 @@ const defaultSSHConfig = new ReactiveVar({
   password: ''
 });
 
+function loadSavedConnections() {
+  try {
+    const saved = localStorage.getItem('sshConnections');
+    const connections = saved ? JSON.parse(saved) : [];
+    savedConnections.set(connections);
+    return connections;
+  } catch (error) {
+    console.error('Error loading saved connections:', error);
+    return [];
+  }
+};
+
+function saveConnection(connectionData, name) {
+  try {
+    const connections = loadSavedConnections();
+    const newConnection = {
+      id: Random.id(),
+      name: name || `${connectionData.username}@${connectionData.host}:${connectionData.port}`,
+      host: connectionData.host,
+      port: connectionData.port,
+      username: connectionData.username,
+      // Don't save password for security
+      createdAt: new Date().toISOString()
+    };
+    
+    // Check if connection already exists
+    const existingIndex = connections.findIndex(conn => 
+      conn.host === connectionData.host && 
+      conn.port === connectionData.port && 
+      conn.username === connectionData.username
+    );
+    
+    if (existingIndex >= 0) {
+      connections[existingIndex] = { ...connections[existingIndex], ...newConnection };
+    } else {
+      connections.push(newConnection);
+    }
+    
+    localStorage.setItem('sshConnections', JSON.stringify(connections));
+    savedConnections.set(connections);
+    
+    console.log(' Connection saved:', newConnection.name);
+    return newConnection;
+  } catch (error) {
+    console.error('Error saving connection:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete saved connection
+ */
+function deleteSavedConnection(connectionId) {
+  try {
+    const connections = loadSavedConnections();
+    const filtered = connections.filter(conn => conn.id !== connectionId);
+    localStorage.setItem('sshConnections', JSON.stringify(filtered));
+    savedConnections.set(filtered);
+    console.log(' Connection deleted');
+  } catch (error) {
+    console.error('Error deleting connection:', error);
+  }
+};
+
+/**
+ * Fill form with saved connection data
+ */
+function fillConnectionForm(connection) {
+  const modal = document.querySelector('.connection-modal');
+  if (!modal) return;
+  
+  modal.querySelector('#host').value = connection.host || '';
+  modal.querySelector('#port').value = connection.port || 22;
+  modal.querySelector('#username').value = connection.username || '';
+  modal.querySelector('#password').value = ''; // Always empty for security
+  modal.querySelector('#password').focus(); // Focus password field
+  
+  // Update reactive var
+  const config = defaultSSHConfig.get();
+  defaultSSHConfig.set({
+    ...config,
+    host: connection.host,
+    port: connection.port,
+    username: connection.username,
+    password: ''
+  });
+  
+  selectedSavedConnection.set(connection);
+  console.log(' Form filled with saved connection:', connection.name);
+}
+
 Template.terminal.onCreated(function() {
   console.log('Terminal component created');
   connectWebSocket();
+  connectWebSocket();
+  loadSavedConnections();
 });
 
 Template.terminal.helpers({
@@ -60,6 +158,25 @@ Template.terminal.helpers({
   isDisconnected() {
     return connectionStatus.get() === 'disconnected';
   },
+
+  savedConnections() {
+    return savedConnections.get();
+  },
+  
+  hasSavedConnections() {
+    return savedConnections.get().length > 0;
+  },
+  
+  showSaveCredentials() {
+    return showSaveCredentials.get();
+  },
+  
+  selectedSavedConnection() {
+    return selectedSavedConnection.get();
+  },
+  isContainerMode() {
+    return isContainerMode.get();
+  },
   
   terminals() {
     return terminals.get().map(term => ({
@@ -71,6 +188,18 @@ Template.terminal.helpers({
   
   sshConfig() {
     return defaultSSHConfig.get();
+  },
+
+  isContainerTab() {
+    return activeConnectionTab.get() === 'containers';
+  },
+  
+  isSSHTab() {
+    return activeConnectionTab.get() === 'ssh';
+  },
+  
+  isSavedTab() {
+    return activeConnectionTab.get() === 'saved';
   }
 });
 
@@ -78,6 +207,18 @@ Template.terminal.events({
   'click .add-terminal'(event) {
     event.preventDefault();
     showConnectionModal.set(true);
+    loadSavedConnections();
+    showSaveCredentials.set(savedConnections.get().length > 0);
+    showConnectionModal.set(true);
+  },
+
+  'click .connect-containers-btn'(event) {
+    event.preventDefault();
+    isContainerMode.set(true);
+    
+    // TODO: Step 2 - Handle container connection
+    console.log(' Connect to Containers clicked');
+    handleContainerConnection();
   },
   
   'click .terminal-tab'(event) {
@@ -136,7 +277,126 @@ Template.terminal.events({
     const config = defaultSSHConfig.get();
     config[field] = field === 'port' ? parseInt(value) || 22 : value;
     defaultSSHConfig.set(config);
+  },
+
+  'click .save-connection-btn'(event) {
+    event.preventDefault();
+    const form = document.querySelector('.connection-form');
+    const formData = new FormData(form);
+    
+    const connectionData = {
+      host: formData.get('host') || 'localhost',
+      port: parseInt(formData.get('port')) || 22,
+      username: formData.get('username'),
+      password: formData.get('password') // Won't be saved, just for validation
+    };
+    
+    if (!connectionData.username) {
+      alert('Username is required to save connection');
+      return;
+    }
+    
+    try {
+      const connectionName = prompt('Enter a name for this connection (optional):');
+      const saved = saveConnection(connectionData, connectionName);
+      
+      // Show success feedback
+      const btn = event.currentTarget;
+      const originalText = btn.textContent;
+      btn.textContent = ' Saved!';
+      btn.style.background = '#4caf50';
+      
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '';
+      }, 2000);
+      
+    } catch (error) {
+      alert('Failed to save connection: ' + error.message);
+    }
+  },
+  
+  // Load saved connection
+  'click .saved-connection-item'(event) {
+    const connectionId = event.currentTarget.dataset.connectionId;
+  const connections = savedConnections.get();
+  const connection = connections.find(conn => conn.id === connectionId);
+  
+  if (connection) {
+    fillConnectionForm(connection);
+    
+    // ADD THIS: Switch to SSH tab after filling form
+    activeConnectionTab.set('ssh');
+    document.querySelectorAll('.connection-tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+      pane.classList.remove('active');
+    });
+    document.querySelector('[data-tab="ssh"]').classList.add('active');
+    document.querySelector('.ssh-pane').classList.add('active');
   }
+  },
+  
+  // Delete saved connection
+  'click .delete-saved-connection'(event) {
+    event.stopPropagation();
+    const connectionId = event.currentTarget.dataset.connectionId;
+    const connections = savedConnections.get();
+    const connection = connections.find(conn => conn.id === connectionId);
+    
+    if (connection && confirm(`Delete saved connection "${connection.name}"?`)) {
+      deleteSavedConnection(connectionId);
+    }
+  },
+  
+  // Clear form
+  'click .clear-form-btn'(event) {
+    event.preventDefault();
+    const form = document.querySelector('.connection-form');
+    form.reset();
+    selectedSavedConnection.set(null);
+    
+    // Reset reactive var
+    defaultSSHConfig.set({
+      host: 'localhost',
+      port: 22,
+      username: '',
+      password: ''
+    });
+    
+    document.querySelector('#host').focus();
+  },
+  
+  // Toggle saved connections visibility
+  'click .toggle-saved-connections'(event) {
+    const isVisible = showSaveCredentials.get();
+    showSaveCredentials.set(!isVisible);
+  },
+  
+
+   'click .connection-tab'(event) {
+    const tabName = event.currentTarget.dataset.tab;
+    activeConnectionTab.set(tabName);
+    
+    // Update visual state
+    document.querySelectorAll('.connection-tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+      pane.classList.remove('active');
+    });
+    
+    event.currentTarget.classList.add('active');
+    document.querySelector(`.${tabName}-pane`).classList.add('active');
+  },
+
+  'click .reset-mode-btn'(event) {
+    event.preventDefault();
+    isContainerMode.set(false);
+  }
+
+
 });
 
 Template.terminal.onRendered(function() {
