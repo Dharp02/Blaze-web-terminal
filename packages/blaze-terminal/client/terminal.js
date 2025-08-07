@@ -159,7 +159,7 @@ Template.terminal.helpers({
     return connectionStatus.get() === 'disconnected';
   },
 
-   savedConnections() {
+  savedConnections() {
     return savedConnections.get();
   },
   
@@ -190,7 +190,7 @@ Template.terminal.helpers({
     return defaultSSHConfig.get();
   },
 
-   isContainerTab() {
+  isContainerTab() {
     return activeConnectionTab.get() === 'containers';
   },
   
@@ -319,12 +319,23 @@ Template.terminal.events({
   // Load saved connection
   'click .saved-connection-item'(event) {
     const connectionId = event.currentTarget.dataset.connectionId;
-    const connections = savedConnections.get();
-    const connection = connections.find(conn => conn.id === connectionId);
+  const connections = savedConnections.get();
+  const connection = connections.find(conn => conn.id === connectionId);
+  
+  if (connection) {
+    fillConnectionForm(connection);
     
-    if (connection) {
-      fillConnectionForm(connection);
-    }
+    // ADD THIS: Switch to SSH tab after filling form
+    activeConnectionTab.set('ssh');
+    document.querySelectorAll('.connection-tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+      pane.classList.remove('active');
+    });
+    document.querySelector('[data-tab="ssh"]').classList.add('active');
+    document.querySelector('.ssh-pane').classList.add('active');
+  }
   },
   
   // Delete saved connection
