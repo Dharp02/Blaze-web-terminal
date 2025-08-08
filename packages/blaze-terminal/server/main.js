@@ -18,6 +18,7 @@ class SimpleTerminalServer {
       const clientId = this.generateId();
       this.clients.set(clientId, ws);
       console.log(`📱 Client connected: ${clientId}`);
+      this.sendExistingSessions(ws);
 
       // Send connection confirmation
       ws.send(JSON.stringify({
@@ -52,12 +53,40 @@ class SimpleTerminalServer {
     });
   }
 
+  sendExistingSessions(ws) {
+  const activeSessions = [];
+  
+  for (const [sessionId, session] of this.sessions.entries()) {
+    if (session.isConnected && session.ssh) {
+      activeSessions.push({
+        sessionId: sessionId,
+        title: session.name || `${session.username}@${session.host}`,
+        host: session.host,
+        username: session.username,
+        status: 'connected',
+        createdAt: session.createdAt
+      });
+    }
+  }
+
+  if (activeSessions.length > 0) {
+    ws.send(JSON.stringify({
+      type: 'existing_sessions',
+      sessions: activeSessions
+    }));
+    console.log(` Sent ${activeSessions.length} existing sessions to client`);
+  }
+}
+
   handleMessage(ws, clientId, message) {
     console.log(` Message: ${message.type}`);
 
     switch (message.type) {
       case 'create_terminal':
         this.createTerminal(ws, clientId, message);
+        break;
+      case 'reconnect_session':
+        this.reconnectSession(ws, clientId, message.sessionId);
         break;
       case 'terminal_input':
         this.handleInput(message);
@@ -70,6 +99,31 @@ class SimpleTerminalServer {
         break;
     }
   }
+
+  reconnectSession(ws, clientId, sessionId) {
+  const session = this.sessions.get(sessionId);
+  
+  if (!session || !session.isConnected) {
+    this.sendError(ws, sessionId, 'Session not found or disconnected');
+    return;
+  }
+
+  // Update WebSocket reference for this session
+  session.ws = ws;
+  session.clientId = clientId;
+
+  // Send reconnection success
+  ws.send(JSON.stringify({
+    type: 'session_reconnected',
+    sessionId: sessionId,
+    title: session.name || `Terminal ${sessionId.substr(0, 8)}`,
+    host: session.host,
+    cols: session.cols,
+    rows: session.rows
+  }));
+
+  console.log(` Reconnected to session: ${sessionId}`);
+}
 
   createTerminal(ws, clientId, message) {
     const { sessionId, cols = 80, rows = 24, sshConfig } = message;
@@ -86,7 +140,12 @@ class SimpleTerminalServer {
       ws: ws,
       cols: cols,
       rows: rows,
-      isConnected: false
+      isConnected: false,
+
+      host: sshConfig.host,
+      username: sshConfig.username,
+      createdAt: new Date().toISOString(),
+      name: `${sshConfig.username}@${sshConfig.host}`
     };
 
     this.sessions.set(sessionId, session);
@@ -146,7 +205,7 @@ class SimpleTerminalServer {
             sessionId: sessionId,
             exitCode: code || 0
           }));
-          this.cleanupSession(sessionId);
+          this.clients.delete(clientId);
         });
 
         // Handle stream errors
