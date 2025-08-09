@@ -1,24 +1,29 @@
 const WebSocket = require('ws');
 const { Client } = require('ssh2');
 
-
 class SimpleTerminalServer {
   constructor(port = 8080) {
     this.port = port;
     this.wss = null;
     this.sessions = new Map();
     this.clients = new Map();
+    
+    // Session cleanup settings
+    this.sessionTimeoutMs = 30 * 60 * 1000; // 30 minutes before cleanup
+    this.cleanupInterval = 5 * 60 * 1000; // Check every 5 minutes
+    
+    // Start periodic cleanup
+    this.startSessionCleanup();
   }
 
   start() {
     this.wss = new WebSocket.Server({ port: this.port });
-    console.log(` Terminal server started on port ${this.port}`);
+    console.log('Terminal server started on port', this.port);
 
     this.wss.on('connection', (ws) => {
       const clientId = this.generateId();
       this.clients.set(clientId, ws);
-      console.log(`📱 Client connected: ${clientId}`);
-      this.sendExistingSessions(ws);
+      console.log('Client connected:', clientId);
 
       // Send connection confirmation
       ws.send(JSON.stringify({
@@ -31,55 +36,73 @@ class SimpleTerminalServer {
           const message = JSON.parse(data.toString());
           this.handleMessage(ws, clientId, message);
         } catch (error) {
-          console.error(' Error parsing message:', error);
+          console.error('Error parsing message:', error);
         }
       });
 
       ws.on('close', () => {
-        console.log(` Client disconnected: ${clientId}`);
-        this.cleanupClient(clientId);
+        console.log('Client disconnected:', clientId);
+        // DON'T cleanup sessions immediately - just mark them as disconnected
+        this.markClientSessionsAsDisconnected(clientId);
+        this.clients.delete(clientId);
       });
 
       ws.on('error', (error) => {
-        console.error(` WebSocket error for client ${clientId}:`, error);
+        console.error('WebSocket error for client', clientId + ':', error);
       });
     });
 
     // Graceful shutdown
     process.on('SIGINT', () => {
-      console.log('\n Shutting down...');
+      console.log('\nShutting down...');
       this.shutdown();
       process.exit(0);
     });
   }
 
-  sendExistingSessions(ws) {
-  const activeSessions = [];
-  
-  for (const [sessionId, session] of this.sessions.entries()) {
-    if (session.isConnected && session.ssh) {
-      activeSessions.push({
-        sessionId: sessionId,
-        title: session.name || `${session.username}@${session.host}`,
-        host: session.host,
-        username: session.username,
-        status: 'connected',
-        createdAt: session.createdAt
-      });
+  /**
+   * Mark sessions as disconnected but keep SSH alive
+   */
+  markClientSessionsAsDisconnected(clientId) {
+    for (const [sessionId, session] of this.sessions.entries()) {
+      if (session.clientId === clientId) {
+        console.log('Marking session', sessionId, 'as disconnected (keeping SSH alive)');
+        session.ws = null;
+        session.clientId = null;
+        session.disconnectedAt = new Date();
+        // Keep isConnected as true since SSH is still active
+      }
     }
   }
 
-  if (activeSessions.length > 0) {
-    ws.send(JSON.stringify({
-      type: 'existing_sessions',
-      sessions: activeSessions
-    }));
-    console.log(` Sent ${activeSessions.length} existing sessions to client`);
+  /**
+   * Periodic cleanup of old disconnected sessions
+   */
+  startSessionCleanup() {
+    setInterval(() => {
+      const now = new Date();
+      let cleanedCount = 0;
+      
+      for (const [sessionId, session] of this.sessions.entries()) {
+        // Only cleanup sessions that have been disconnected for too long
+        if (!session.ws && session.disconnectedAt) {
+          const timeSinceDisconnect = now - session.disconnectedAt;
+          if (timeSinceDisconnect > this.sessionTimeoutMs) {
+            console.log('Cleaning up old session:', sessionId);
+            this.cleanupSession(sessionId, false);
+            cleanedCount++;
+          }
+        }
+      }
+      
+      if (cleanedCount > 0) {
+        console.log('Cleaned up', cleanedCount, 'old sessions');
+      }
+    }, this.cleanupInterval);
   }
-}
 
   handleMessage(ws, clientId, message) {
-    console.log(` Message: ${message.type}`);
+    console.log('Message:', message.type);
 
     switch (message.type) {
       case 'create_terminal':
@@ -101,35 +124,43 @@ class SimpleTerminalServer {
   }
 
   reconnectSession(ws, clientId, sessionId) {
-  const session = this.sessions.get(sessionId);
-  
-  if (!session || !session.isConnected) {
-    this.sendError(ws, sessionId, 'Session not found or disconnected');
-    return;
+    const session = this.sessions.get(sessionId);
+    
+    if (!session || !session.isConnected || !session.ssh) {
+      console.log('Session not found or disconnected:', sessionId);
+      ws.send(JSON.stringify({
+        type: 'session_not_found',
+        sessionId: sessionId
+      }));
+      return;
+    }
+
+    console.log('Reconnecting to session:', sessionId);
+    
+    // Update WebSocket reference for this session
+    session.ws = ws;
+    session.clientId = clientId;
+    session.disconnectedAt = null; // Clear disconnect time
+    
+    // Send reconnection success
+    ws.send(JSON.stringify({
+      type: 'session_reconnected',
+      sessionId: sessionId,
+      title: session.name || 'Terminal ' + sessionId.substr(0, 8),
+      host: session.host,
+      username: session.username,
+      cols: session.cols,
+      rows: session.rows
+    }));
+
+    console.log('Successfully reconnected to session:', sessionId);
   }
-
-  // Update WebSocket reference for this session
-  session.ws = ws;
-  session.clientId = clientId;
-
-  // Send reconnection success
-  ws.send(JSON.stringify({
-    type: 'session_reconnected',
-    sessionId: sessionId,
-    title: session.name || `Terminal ${sessionId.substr(0, 8)}`,
-    host: session.host,
-    cols: session.cols,
-    rows: session.rows
-  }));
-
-  console.log(` Reconnected to session: ${sessionId}`);
-}
 
   createTerminal(ws, clientId, message) {
     const { sessionId, cols = 80, rows = 24, sshConfig } = message;
     
-    console.log(` Creating terminal: ${sessionId}`);
-    console.log(` Connecting to: ${sshConfig.host}:${sshConfig.port} as ${sshConfig.username}`);
+    console.log('Creating terminal:', sessionId);
+    console.log('Connecting to:', sshConfig.host + ':' + sshConfig.port, 'as', sshConfig.username);
 
     const ssh = new Client();
     const session = {
@@ -141,11 +172,14 @@ class SimpleTerminalServer {
       cols: cols,
       rows: rows,
       isConnected: false,
-
+      disconnectedAt: null,
+      
+      // Connection details
       host: sshConfig.host,
+      port: sshConfig.port,
       username: sshConfig.username,
       createdAt: new Date().toISOString(),
-      name: `${sshConfig.username}@${sshConfig.host}`
+      name: sshConfig.username + '@' + sshConfig.host + ':' + sshConfig.port
     };
 
     this.sessions.set(sessionId, session);
@@ -160,7 +194,7 @@ class SimpleTerminalServer {
 
     ssh.on('ready', () => {
       clearTimeout(timeout);
-      console.log(` SSH connected: ${sessionId}`);
+      console.log('SSH connected:', sessionId);
       
       ssh.shell({
         cols: cols,
@@ -168,8 +202,8 @@ class SimpleTerminalServer {
         term: 'xterm-256color'
       }, (err, stream) => {
         if (err) {
-          console.error(` Shell error: ${err.message}`);
-          this.sendError(ws, sessionId, `Shell error: ${err.message}`);
+          console.error('Shell error:', err.message);
+          this.sendError(ws, sessionId, 'Shell error: ' + err.message);
           this.cleanupSession(sessionId);
           return;
         }
@@ -178,7 +212,7 @@ class SimpleTerminalServer {
         session.isConnected = true;
 
         // Send success response
-        ws.send(JSON.stringify({
+        this.sendToSession(sessionId, {
           type: 'terminal_created',
           sessionId: sessionId,
           shell: 'bash',
@@ -186,31 +220,32 @@ class SimpleTerminalServer {
           cols: cols,
           rows: rows,
           host: sshConfig.host
-        }));
+        });
 
         // Handle terminal output
         stream.on('data', (data) => {
-          ws.send(JSON.stringify({
+          this.sendToSession(sessionId, {
             type: 'terminal_output',
             sessionId: sessionId,
             data: data.toString()
-          }));
+          });
         });
 
         // Handle stream close
         stream.on('close', (code) => {
-          console.log(` Stream closed: ${sessionId}`);
-          ws.send(JSON.stringify({
+          console.log('SSH stream closed:', sessionId, '(code: ' + code + ')');
+          this.sendToSession(sessionId, {
             type: 'terminal_exit',
             sessionId: sessionId,
             exitCode: code || 0
-          }));
-          this.clients.delete(clientId);
+          });
+          // Cleanup the session since SSH itself closed
+          this.cleanupSession(sessionId);
         });
 
         // Handle stream errors
         stream.on('error', (err) => {
-          console.error(` Stream error: ${err.message}`);
+          console.error('SSH stream error:', err.message);
           this.sendError(ws, sessionId, err.message);
         });
       });
@@ -218,7 +253,7 @@ class SimpleTerminalServer {
 
     ssh.on('error', (err) => {
       clearTimeout(timeout);
-      console.error(` SSH error: ${err.message}`);
+      console.error('SSH connection error:', err.message);
       
       let errorMessage = 'Connection failed';
       if (err.code === 'ENOTFOUND') {
@@ -243,12 +278,25 @@ class SimpleTerminalServer {
         username: sshConfig.username,
         password: sshConfig.password,
         readyTimeout: 15000,
-        keepaliveInterval: 30000
+        keepaliveInterval: 30000,
+        keepaliveCountMax: 3
       });
     } catch (error) {
-      console.error(` Connect error: ${error.message}`);
+      console.error('SSH connect error:', error.message);
       this.sendError(ws, sessionId, error.message);
       this.cleanupSession(sessionId);
+    }
+  }
+
+  /**
+   * Send message to session if WebSocket is available
+   */
+  sendToSession(sessionId, message) {
+    const session = this.sessions.get(sessionId);
+    if (session && session.ws && session.ws.readyState === WebSocket.OPEN) {
+      session.ws.send(JSON.stringify(message));
+    } else {
+      console.log('Cannot send message to session', sessionId, '- no active WebSocket');
     }
   }
 
@@ -260,8 +308,10 @@ class SimpleTerminalServer {
       try {
         session.stream.write(input);
       } catch (error) {
-        console.error(` Input error: ${error.message}`);
+        console.error('Input error:', error.message);
       }
+    } else {
+      console.log('Cannot send input to session', sessionId, '- not connected');
     }
   }
 
@@ -274,19 +324,19 @@ class SimpleTerminalServer {
         session.stream.setWindow(rows, cols);
         session.cols = cols;
         session.rows = rows;
-        console.log(` Resized ${sessionId} to ${cols}x${rows}`);
+        console.log('Resized', sessionId, 'to', cols + 'x' + rows);
       } catch (error) {
-        console.error(` Resize error: ${error.message}`);
+        console.error('Resize error:', error.message);
       }
     }
   }
 
   closeTerminal(sessionId) {
-    console.log(` Closing terminal: ${sessionId}`);
+    console.log('Closing terminal:', sessionId);
     this.cleanupSession(sessionId);
   }
 
-  cleanupSession(sessionId) {
+  cleanupSession(sessionId, sendNotification = true) {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
@@ -298,40 +348,35 @@ class SimpleTerminalServer {
         session.ssh.end();
       }
       
-      session.ws.send(JSON.stringify({
-        type: 'terminal_closed',
-        sessionId: sessionId
-      }));
+      if (sendNotification) {
+        this.sendToSession(sessionId, {
+          type: 'terminal_closed',
+          sessionId: sessionId
+        });
+      }
     } catch (error) {
-      console.error(` Cleanup error: ${error.message}`);
+      console.error('Cleanup error:', error.message);
     }
 
     this.sessions.delete(sessionId);
-  }
-
-  cleanupClient(clientId) {
-    // Close all sessions for this client
-    for (const [sessionId, session] of this.sessions.entries()) {
-      if (session.clientId === clientId) {
-        this.cleanupSession(sessionId);
-      }
-    }
-    this.clients.delete(clientId);
+    console.log('Session cleaned up:', sessionId);
   }
 
   sendError(ws, sessionId, error) {
-    ws.send(JSON.stringify({
-      type: 'terminal_error',
-      sessionId: sessionId,
-      error: error
-    }));
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'terminal_error',
+        sessionId: sessionId,
+        error: error
+      }));
+    }
   }
 
   shutdown() {
-    console.log(' Cleaning up...');
+    console.log('Cleaning up all sessions...');
     
     for (const sessionId of this.sessions.keys()) {
-      this.cleanupSession(sessionId);
+      this.cleanupSession(sessionId, false);
     }
 
     if (this.wss) {
@@ -342,8 +387,35 @@ class SimpleTerminalServer {
   generateId() {
     return Math.random().toString(36).substr(2, 9);
   }
+
+  /**
+   * Get statistics about active sessions
+   */
+  getSessionStats() {
+    const total = this.sessions.size;
+    let connected = 0;
+    let disconnected = 0;
+    
+    for (const session of this.sessions.values()) {
+      if (session.ws) {
+        connected++;
+      } else {
+        disconnected++;
+      }
+    }
+    
+    return { total, connected, disconnected };
+  }
 }
 
 // Start server
 const server = new SimpleTerminalServer(8080);
 server.start();
+
+// Log session stats periodically
+setInterval(() => {
+  const stats = server.getSessionStats();
+  if (stats.total > 0) {
+    console.log('Sessions:', stats.total, 'total (' + stats.connected, 'connected,', stats.disconnected, 'disconnected)');
+  }
+}, 60000); // Every minute
