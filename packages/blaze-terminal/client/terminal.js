@@ -661,7 +661,7 @@ function handleSessionReconnected(data) {
   if (!terminalInstances.has(sessionId)) {
     console.log('Initializing terminal UI for reconnected session');
     Meteor.setTimeout(() => {
-      initializeTerminal(sessionId);
+      initializeTerminal(sessionId, true); //  Pass isReconnection = true
     }, 100);
   }
   
@@ -966,8 +966,8 @@ function closeTerminal(terminalId) {
 /**
  * Initialize terminal instance with proper input handling
  */
-function initializeTerminal(terminalId) {
-  console.log('Initializing terminal:', terminalId);
+function initializeTerminal(terminalId, isReconnection = false) {
+  console.log('Initializing terminal:', terminalId, isReconnection ? '(reconnection)' : '(new)');
   
   Meteor.setTimeout(() => {
     const container = document.getElementById(`terminal-${terminalId}`);
@@ -1017,6 +1017,14 @@ function initializeTerminal(terminalId) {
     
     term.open(container);
     term.fitAddon = fitAddon;
+
+    if (!isReconnection) {
+      term.reset();
+      term.clear();
+      console.log('Terminal cleared (new connection)');
+    } else {
+      console.log('Terminal NOT cleared (reconnection - preserving content)');
+    }
     
     // Fit after a short delay
     Meteor.setTimeout(() => {

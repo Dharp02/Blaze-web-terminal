@@ -8,6 +8,7 @@ class SimpleTerminalServer {
     this.sessions = new Map();
     this.clients = new Map();
     
+    this.sessionScreens = new Map();
     // Session cleanup settings
     this.sessionTimeoutMs = 30 * 60 * 1000; // 30 minutes before cleanup
     this.cleanupInterval = 5 * 60 * 1000; // Check every 5 minutes
@@ -60,7 +61,7 @@ class SimpleTerminalServer {
     });
   }
 
-  /**
+  /*
    * Mark sessions as disconnected but keep SSH alive
    */
   markClientSessionsAsDisconnected(clientId) {
@@ -152,6 +153,16 @@ class SimpleTerminalServer {
       cols: session.cols,
       rows: session.rows
     }));
+    //   Request current screen content from SSH
+    if (session.stream && session.isConnected) {
+      console.log('Requesting current screen content for session:', sessionId);
+      
+      // Send a command to refresh the current state
+      setTimeout(() => {
+        // Send Ctrl+L (clear and redraw) to get fresh prompt
+        session.stream.write('\x0C');
+      }, 200);
+    }
 
     console.log('Successfully reconnected to session:', sessionId);
   }
@@ -224,6 +235,17 @@ class SimpleTerminalServer {
 
         // Handle terminal output
         stream.on('data', (data) => {
+          const output = data.toString();
+          
+          //  STORE screen content for reconnections
+          let screenContent = this.sessionScreens.get(sessionId) || '';
+          screenContent += output;
+          
+          // Keep only last 10KB to avoid memory issues
+          if (screenContent.length > 10000) {
+            screenContent = screenContent.slice(-10000);
+          }
+          this.sessionScreens.set(sessionId, screenContent);
           this.sendToSession(sessionId, {
             type: 'terminal_output',
             sessionId: sessionId,
@@ -359,6 +381,7 @@ class SimpleTerminalServer {
     }
 
     this.sessions.delete(sessionId);
+    this.sessionScreens.delete(sessionId); //  Clean up stored content
     console.log('Session cleaned up:', sessionId);
   }
 
