@@ -1036,7 +1036,7 @@ function initializeTerminal(terminalId, isReconnection = false) {
     
     // CRITICAL: Set up input handling IMMEDIATELY
     setupTerminalInput(term, terminalId);
-    
+    monitorScrollAreaHeight(terminalId);
     // Add click handlers for focus
     container.addEventListener('click', () => {
       console.log('Container clicked, focusing terminal');
@@ -1208,6 +1208,46 @@ window.fixTerminalFocus = function() {
     }
   });
 };
+
+
+function monitorScrollAreaHeight(terminalId) {
+  const container = document.getElementById(`terminal-${terminalId}`);
+  if (!container) return;
+
+  setTimeout(() => {
+    const scrollArea = container.querySelector('.xterm-scroll-area');
+    const terminalContent = container.closest('.terminal-content');
+    
+    if (!scrollArea || !terminalContent) return;
+    
+    // Setup
+    scrollArea.style.height = '0px';
+    terminalContent.style.overflowY = 'scroll';
+    
+    // Scroll to bottom by default immediately
+    terminalContent.scrollTop = terminalContent.scrollHeight;
+    
+    // Watch for height changes and reset
+    new MutationObserver(() => {
+      if (scrollArea.style.height !== '0px') {
+        scrollArea.style.height = '0px';
+        terminalContent.scrollTop = terminalContent.scrollHeight;
+      }
+    }).observe(scrollArea, { attributes: true, attributeFilter: ['style'] });
+    
+    // Auto-scroll on new content
+    const rows = container.querySelector('.xterm-rows');
+    if (rows) {
+      new MutationObserver(() => {
+        terminalContent.scrollTop = terminalContent.scrollHeight;
+      }).observe(rows, { childList: true, subtree: true });
+    }
+    
+    console.log(` Monitoring active for terminal: ${terminalId} - scrolled to bottom`);
+  }, 500);
+}
+
+
 
 // Manual clear function for debugging
 window.clearSavedSessions = function() {

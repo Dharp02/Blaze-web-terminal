@@ -247,8 +247,8 @@
 .terminal-content {
   flex: 1;
   position: relative;
-  overflow: hidden;
   background: #0c0c0c;
+  overflow-y: scroll;
 }
 
 .terminal-instance {
@@ -883,4 +883,8 @@
 /* Reset mode button */
 .reset-mode-btn {
   margin-top: 16px;
+}
+
+ .xterm-scroll-area {
+  height: 0 !important; /* Key fix - was forcing fixed height */
 }
