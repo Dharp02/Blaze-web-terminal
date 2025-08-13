@@ -58,8 +58,6 @@ graph TB
     TerminalServer --- SSHManagement
     SSHManagement --- RemoteServers
     SSHManagement --- CreatedContainers
-    
-    ContainerUI -.-> TerminalUI
 ```
 
 ##  Features
