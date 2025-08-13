@@ -3,19 +3,23 @@ import { ReactiveVar } from 'meteor/reactive-var';
 import './container-management.html'
 import './container-management.css'
 
+// ===========================================
+// REACTIVE VARIABLES
+// ===========================================
+
 const displayedContainers = new ReactiveVar([]);
 const hasContainers = new ReactiveVar(false);
 const currentTab = new ReactiveVar('active');
 const favoriteFilter = new ReactiveVar(false);
 
+// ===========================================
+// UTILITY FUNCTIONS
+// ===========================================
 
 function isTerminalPackageAvailable() {
   return typeof window.TerminalAPI !== 'undefined' && window.TerminalAPI.isAvailable();
 }
 
-/**
- * Create connection data from container info
- */
 function createConnectionData(container) {
   return {
     host: 'localhost',
@@ -25,9 +29,7 @@ function createConnectionData(container) {
   };
 }
 
-
 function showContainerConnectionModal(container) {
- 
   const connectionInfo = `
     Container: ${container.name}
     Host: localhost
@@ -41,6 +43,10 @@ function showContainerConnectionModal(container) {
   alert(connectionInfo);
 }
 
+// ===========================================
+// STORAGE FUNCTIONS
+// ===========================================
+
 function saveFavorites(containers) {
   const favorites = containers
     .filter(c => c.isFavorite)
@@ -53,7 +59,10 @@ function loadFavorites() {
   return saved ? JSON.parse(saved) : [];
 }
 
-// Function to load containers
+// ===========================================
+// CONTAINER LOADING FUNCTIONS
+// ===========================================
+
 function loadContainers() {
   Meteor.call('listContainers', function(err, containers) {
     if (err) {
@@ -74,10 +83,17 @@ function loadContainers() {
   });
 }
 
-// Load existing containers when template is created
+// ===========================================
+// TEMPLATE LIFECYCLE
+// ===========================================
+
 Template.containerManager.onCreated(function() {
   loadContainers();
 });
+
+// ===========================================
+// TEMPLATE HELPERS
+// ===========================================
 
 Template.containerManager.helpers({
   displayedContainers() {
@@ -92,6 +108,7 @@ Template.containerManager.helpers({
     
     return allContainers;
   },
+  
   hasContainers() {
     const activeTab = currentTab.get();
     const allContainers = displayedContainers.get();
@@ -108,20 +125,28 @@ Template.containerManager.helpers({
   isActiveTab() {
     return currentTab.get() === 'active';
   },
+  
   isCreating() {
     return false;
   },
+  
   containerCount() {
     return displayedContainers.get().length;
   },
+  
   favoritesCount() {
     favoriteFilter.get();
     return displayedContainers.get().filter(container => container.isFavorite).length;
   },
+  
   isFavoritesTab() {
     return currentTab.get() === 'favorites';
   }
 });
+
+// ===========================================
+// TEMPLATE EVENTS
+// ===========================================
 
 Template.containerManager.events({
   "click .create-container-btn": function(event, template){
@@ -147,54 +172,52 @@ Template.containerManager.events({
       
       // Refresh the container list to show all containers
       loadContainers();
-      
-      
     });
   },
 
   "click .connect-btn": function(event, template) {
-  event.preventDefault();
-  
-  const container = this; // Container data from template context
-  
-  console.log(' Connect button clicked for:', container.name);
-  
-  // Check if terminal package is available
-  if (isTerminalPackageAvailable()) {
-    console.log(' Terminal package detected - using direct integration');
+    event.preventDefault();
     
-    // Create SSH config for container
-    const sshConfig = createConnectionData(container);
+    const container = this; // Container data from template context
     
-    console.log(' Connecting to container:', sshConfig);
+    console.log(' Connect button clicked for:', container.name);
     
-    // Use terminal package directly
-    const success = window.TerminalAPI.createDirectConnection(sshConfig);
-    
-    if (success) {
-      console.log(' Direct connection successful');
+    // Check if terminal package is available
+    if (isTerminalPackageAvailable()) {
+      console.log(' Terminal package detected - using direct integration');
       
-      // Optional: Show success feedback
-      const btn = $(event.currentTarget);
-      const originalText = btn.text();
-      btn.text('Connected!').css('background', '#4caf50');
+      // Create SSH config for container
+      const sshConfig = createConnectionData(container);
       
-      setTimeout(() => {
-        btn.text(originalText).css('background', '');
-      }, 2000);
+      console.log(' Connecting to container:', sshConfig);
+      
+      // Use terminal package directly
+      const success = window.TerminalAPI.createDirectConnection(sshConfig);
+      
+      if (success) {
+        console.log(' Direct connection successful');
+        
+        // Optional: Show success feedback
+        const btn = $(event.currentTarget);
+        const originalText = btn.text();
+        btn.text('Connected!').css('background', '#4caf50');
+        
+        setTimeout(() => {
+          btn.text(originalText).css('background', '');
+        }, 2000);
+        
+      } else {
+        console.error(' Direct connection failed');
+        alert('Failed to connect to container. Please try again.');
+      }
       
     } else {
-      console.error(' Direct connection failed');
-      alert('Failed to connect to container. Please try again.');
+      console.log(' Terminal package not available - using fallback modal');
+      
+      //  Show original connection modal 
+      showContainerConnectionModal(container);
     }
-    
-  } else {
-    console.log(' Terminal package not available - using fallback modal');
-    
-    //  Show original connection modal 
-    showContainerConnectionModal(container);
-  }
-},
+  },
 
   "click .stop-btn ": function(event, template){
     const containerId = event.currentTarget.getAttribute('data-container-id');
@@ -264,9 +287,6 @@ Template.containerManager.events({
       // Show feedback
       const message = newFavoriteState ? 'Added to favorites ' : 'Removed from favorites';
       console.log(message);
-    
-
-
   },
 
   "click .tab-button": function(event, template) {
@@ -348,9 +368,5 @@ Template.containerManager.events({
     
     // Read the file as text
     reader.readAsText(file);
-  },
-
-
-
-
+  }
 });
