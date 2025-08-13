@@ -1254,3 +1254,64 @@ window.clearSavedSessions = function() {
   localStorage.removeItem('activeTerminalSessions');
   console.log('Manually cleared all saved terminal sessions');
 };
+
+
+/**
+ * Public API for other packages to integrate with terminal
+ */
+window.TerminalAPI = {
+  
+  /**
+   * Check if terminal package is available
+   */
+  isAvailable() {
+    return true;
+  },
+  
+  /**
+   
+   * @param {Object} sshConfig - SSH connection configuration
+   * @param {string} sshConfig.host - Host address
+   * @param {number} sshConfig.port - SSH port
+   * @param {string} sshConfig.username - Username
+   * @param {string} sshConfig.password - Password
+   */
+  createDirectConnection(sshConfig) {
+    console.log(' Direct connection requested:', `${sshConfig.username}@${sshConfig.host}:${sshConfig.port}`);
+    
+    // Validate config
+    if (!sshConfig.host || !sshConfig.username || !sshConfig.password) {
+      console.error(' Invalid SSH config for direct connection');
+      return false;
+    }
+    
+    // Show terminal panel if hidden
+    isTerminalVisible.set(true);
+    
+    // Create terminal with SSH config 
+    createTerminalWithSSH(sshConfig);
+    
+    console.log(' Direct connection initiated');
+    return true;
+  },
+  
+  /**
+   * Show terminal panel
+   */
+  showTerminal() {
+    isTerminalVisible.set(true);
+  },
+  
+  /**
+   * Get terminal status
+   */
+  getStatus() {
+    return {
+      visible: isTerminalVisible.get(),
+      terminalCount: terminals.get().length,
+      connected: connectionStatus.get() === 'connected'
+    };
+  }
+};
+
+console.log(' Terminal API ready for integration');

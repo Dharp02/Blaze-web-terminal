@@ -8,6 +8,39 @@ const hasContainers = new ReactiveVar(false);
 const currentTab = new ReactiveVar('active');
 const favoriteFilter = new ReactiveVar(false);
 
+
+function isTerminalPackageAvailable() {
+  return typeof window.TerminalAPI !== 'undefined' && window.TerminalAPI.isAvailable();
+}
+
+/**
+ * Create connection data from container info
+ */
+function createConnectionData(container) {
+  return {
+    host: 'localhost',
+    port: parseInt(container.publicPort),
+    username: 'root',
+    password: 'changeme' // Default container password
+  };
+}
+
+
+function showContainerConnectionModal(container) {
+ 
+  const connectionInfo = `
+    Container: ${container.name}
+    Host: localhost
+    Port: ${container.publicPort}
+    Username: root
+    Password: changeme
+
+    Use these details in your SSH client.
+      `;
+  
+  alert(connectionInfo);
+}
+
 function saveFavorites(containers) {
   const favorites = containers
     .filter(c => c.isFavorite)
@@ -118,6 +151,50 @@ Template.containerManager.events({
       
     });
   },
+
+  "click .connect-btn": function(event, template) {
+  event.preventDefault();
+  
+  const container = this; // Container data from template context
+  
+  console.log(' Connect button clicked for:', container.name);
+  
+  // Check if terminal package is available
+  if (isTerminalPackageAvailable()) {
+    console.log(' Terminal package detected - using direct integration');
+    
+    // Create SSH config for container
+    const sshConfig = createConnectionData(container);
+    
+    console.log(' Connecting to container:', sshConfig);
+    
+    // Use terminal package directly
+    const success = window.TerminalAPI.createDirectConnection(sshConfig);
+    
+    if (success) {
+      console.log(' Direct connection successful');
+      
+      // Optional: Show success feedback
+      const btn = $(event.currentTarget);
+      const originalText = btn.text();
+      btn.text('Connected!').css('background', '#4caf50');
+      
+      setTimeout(() => {
+        btn.text(originalText).css('background', '');
+      }, 2000);
+      
+    } else {
+      console.error(' Direct connection failed');
+      alert('Failed to connect to container. Please try again.');
+    }
+    
+  } else {
+    console.log(' Terminal package not available - using fallback modal');
+    
+    //  Show original connection modal 
+    showContainerConnectionModal(container);
+  }
+},
 
   "click .stop-btn ": function(event, template){
     const containerId = event.currentTarget.getAttribute('data-container-id');
@@ -272,17 +349,6 @@ Template.containerManager.events({
     // Read the file as text
     reader.readAsText(file);
   },
-
-
-
-
-
-  
-
-
-
-
-
 
 
 
