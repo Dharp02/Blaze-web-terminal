@@ -1,6 +1,6 @@
 Package.describe({
   name: 'dharapo:blaze-terminal',
-  version: '0.0.1',
+  version: '0.0.3',
   summary: 'Terminal component for Meteor with Blaze',
   git: '',
   documentation: 'README.md'
@@ -35,6 +35,6 @@ Package.onUse(function(api) {
 Package.onTest(function(api) {
   api.use('ecmascript');
   api.use('tinytest');
-  api.use('blaze-terminal');
+  api.use('dharapo:blaze-terminal');
   api.mainModule('blaze-terminal-tests.js');
 });
