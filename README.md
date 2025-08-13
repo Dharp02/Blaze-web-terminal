@@ -60,6 +60,7 @@ graph TB
     SSHManagement --- CreatedContainers
     
     ContainerUI -.-> TerminalUI
+```
 
 ##  Features
 
