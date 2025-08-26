@@ -31,3 +31,5 @@ accounts-base
 accounts-password
 alanning:roles
 email
+accounts-google
+accounts-facebook

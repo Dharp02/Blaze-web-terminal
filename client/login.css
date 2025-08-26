@@ -17,6 +17,33 @@
   --shadow-color: rgba(0, 0, 0, 0.4);
   --border-radius: 8px;
   --transition: all 0.3s ease;
+  .social-login {
+    gap: 10px;
+  }
+  
+  .social-btn {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  
+  .modal-content {
+    margin: 10px;
+  }
+  
+  .modal-header,
+  .modal-body {
+    padding: 16px 20px;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+  }
 }
 
 /* === Login Container === */
@@ -117,6 +144,19 @@
   font-size: 14px;
 }
 
+.success-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(39, 174, 96, 0.1);
+  color: var(--success-color);
+  padding: 12px 16px;
+  border-radius: var(--border-radius);
+  border: 1px solid rgba(39, 174, 96, 0.3);
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
 .loading-message {
   display: flex;
   align-items: center;
@@ -137,6 +177,202 @@
   border-top: 2px solid var(--primary-color);
   border-radius: 50%;
   animation: spin 1s linear infinite;
+}
+
+/* === Login Divider === */
+.login-divider {
+  position: relative;
+  text-align: center;
+  margin: 24px 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.login-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-color);
+  z-index: 1;
+}
+
+.login-divider span {
+  background: var(--surface-color);
+  padding: 0 16px;
+  position: relative;
+  z-index: 2;
+}
+
+/* === Social Login === */
+.social-login {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--surface-light);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.social-btn:hover {
+  border-color: var(--primary-color);
+  background: var(--surface-color);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.google-btn:hover {
+  border-color: #4285F4;
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.2);
+}
+
+.facebook-btn:hover {
+  border-color: #1877F2;
+  box-shadow: 0 4px 12px rgba(24, 119, 242, 0.2);
+}
+
+.social-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* === Modal Styles === */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: var(--surface-color);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 20px 60px var(--shadow-color);
+  width: 100%;
+  max-width: 400px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--surface-light);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 24px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: var(--transition);
+  line-height: 1;
+}
+
+.modal-close:hover {
+  background: var(--error-color);
+  color: white;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-body p {
+  margin: 0 0 20px 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.btn-primary {
+  background: linear-gradient(145deg, #27ae60, #2ecc71);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(145deg, #2ecc71, #27ae60);
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: var(--surface-light);
+  color: var(--text-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-secondary:hover {
+  background: var(--surface-color);
+  border-color: var(--text-muted);
 }
 
 /* === Form Styles === */
@@ -217,6 +453,46 @@
   background: var(--surface-color);
   color: var(--text-primary);
   padding: 8px;
+}
+
+/* === Form Options === */
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 16px 0;
+  gap: 16px;
+}
+
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.remember-me input[type="checkbox"] {
+  margin: 0;
+  transform: scale(1.1);
+}
+
+.forgot-password-btn {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--transition);
+  text-decoration: none;
+  padding: 0;
+}
+
+.forgot-password-btn:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
 }
 
 /* === Login Button === */
