@@ -471,7 +471,7 @@ function createTerminalWithSSH(sshConfig) {
   }));
   
   terminals.set([...updatedTerminals, newTerminal]);
-  activeTerminalId.set(newId);
+  activeTerminalId.set(newId); //this triggers autorun
   
   console.log('Creating terminal with SSH config:', `${sshConfig.username}@${sshConfig.host}:${sshConfig.port}`);
   websocket.send(JSON.stringify({
@@ -1075,6 +1075,8 @@ Template.terminal.onCreated(function() {
   // Connect to WebSocket
   connectWebSocket();
   loadSavedConnections();
+
+  
   
   // If we have restored sessions, try to reconnect after WebSocket is ready
   if (restoredSessions && restoredSessions.length > 0) {
@@ -1100,7 +1102,7 @@ Template.terminal.onCreated(function() {
 Template.terminal.onRendered(function() {
   console.log('Terminal template rendered');
   
-  this.autorun(() => {
+  this.autorun(() => {  //like useeffect in react
     const terminalList = terminals.get();
     terminalList.forEach(term => {
       if (!terminalInstances.has(term.id)) {

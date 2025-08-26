@@ -9,10 +9,20 @@
   </div>
 </body>
 
+
 <template name="terminalApp">
-  <div class="app-container">
-    {{> containerManager}}
-    <!-- Terminal panel (similar to VS Code) -->
-    {{> terminal}}
-  </div>
+   <main>
+      {{> yield}}
+    </main>
+
 </template>
+
+
+<template name="container">
+{{> containerManager}}
+{{> terminal}}
+
+</template>
+
+
+

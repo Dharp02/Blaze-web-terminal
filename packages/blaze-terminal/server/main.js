@@ -224,7 +224,7 @@ class SimpleTerminalServer {
 
         // Send success response
         this.sendToSession(sessionId, {
-          type: 'terminal_created',
+          type: 'terminal_created', 
           sessionId: sessionId,
           shell: 'bash',
           platform: 'linux',

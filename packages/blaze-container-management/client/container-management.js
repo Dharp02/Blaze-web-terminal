@@ -59,6 +59,25 @@ function loadFavorites() {
   return saved ? JSON.parse(saved) : [];
 }
 
+function syncFavoritesWithContainers(containers) {
+  const currentFavorites = loadFavorites();
+  const existingContainerIds = containers.map(c => c.id);
+  
+  // Filter out favorites for containers that no longer exist
+  const validFavorites = currentFavorites.filter(id => existingContainerIds.includes(id));
+  
+  // Update localStorage if favorites were cleaned up
+  if (validFavorites.length !== currentFavorites.length) {
+    localStorage.setItem('containerFavorites', JSON.stringify(validFavorites));
+    console.log(' Cleaned up favorites. Before:', currentFavorites.length, 'After:', validFavorites.length);
+    
+    // Force reactive update
+    favoriteFilter.set(!favoriteFilter.get());
+  }
+  
+  return validFavorites;
+}
+
 // ===========================================
 // CONTAINER LOADING FUNCTIONS
 // ===========================================
@@ -70,16 +89,20 @@ function loadContainers() {
       return;
     }
     
-    // Restore favorite status from localStorage
-    const favoriteIds = loadFavorites();
+    // STEP 1: Sync favorites with actual containers (removes deleted ones)
+    const validFavoriteIds = syncFavoritesWithContainers(containers);
+    
+    // STEP 2: Apply favorite status to containers
     const containersWithFavorites = containers.map(container => ({
       ...container,
-      isFavorite: favoriteIds.includes(container.id)
+      isFavorite: validFavoriteIds.includes(container.id)
     }));
     
+    // STEP 3: Update reactive variables
     displayedContainers.set(containersWithFavorites);
     hasContainers.set(containersWithFavorites.length > 0);
-    console.log(' Loaded containers with favorites restored');
+    
+    console.log(' Loaded', containers.length, 'containers with', validFavoriteIds.length, 'favorites');
   });
 }
 
@@ -243,12 +266,19 @@ Template.containerManager.events({
       }
       
       console.log('Container closed successfully:', result);
+
+      const currentFavorites = loadFavorites();
+      const updatedFavorites = currentFavorites.filter(id => id !== containerId);
+      localStorage.setItem('containerFavorites', JSON.stringify(updatedFavorites));
       
       // Remove container from the display list
       const currentContainers = displayedContainers.get();
       const updatedContainers = currentContainers.filter(container => container.id !== containerId);
       displayedContainers.set(updatedContainers);
       hasContainers.set(updatedContainers.length > 0);
+
+      // Trigger favorites reactive update
+      favoriteFilter.set(!favoriteFilter.get());
       
       // Show success message
       alert(` Container "${containerName}" has been closed and deleted successfully!`);
