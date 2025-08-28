@@ -55,23 +55,6 @@
             </div>
           </div>
 
-          <div class="form-group">
-            <label for="role">Role</label>
-            <div class="input-container">
-              <span class="input-icon"></span>
-              <select 
-                id="role" 
-                name="role" 
-                class="login-select" 
-                required
-              >
-                <option value="">Select your role</option>
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-          </div>
-
           <div class="form-options">
             <label class="remember-me">
               <input type="checkbox" name="rememberMe" />
@@ -83,7 +66,7 @@
             </button>
           </div>
 
-          <button type="submit" class="login-btn {{#if isLoading}}loading{{/if}}">
+          <button type="button" class="login-btn {{#if isLoading}}loading{{/if}}">
             {{#if isLoading}}
               <span class="btn-spinner"></span>
               Signing in...

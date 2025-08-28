@@ -1,0 +1,88 @@
+<template name="register">
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="logo-section">
+          <div class="terminal-icon"></div>
+          <h1>Web Terminal</h1>
+          <p class="tagline">Register Form</p>
+        </div>
+      </div>
+
+      <div class="login-body">
+        {{#if loginError}}
+          <div class="error-message">
+            <span class="error-icon"></span>
+            {{loginError}}
+          </div>
+        {{/if}}
+
+        {{#if isLoading}}
+          <div class="loading-message">
+            <div class="loading-spinner"></div>
+            <span>Authenticating...</span>
+          </div>
+        {{/if}}
+
+        <form class="login-form" id="login-form">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <div class="input-container">
+              <span class="input-icon"></span>
+              <input 
+                type="email" 
+                id="email" 
+                name="email" 
+                class="login-input" 
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+          </div>
+
+          
+          <div class="form-group">
+            <label for="username">Username</label>
+            <div class="input-container">
+              <span class="input-icon"></span>
+              <input 
+                type="username" 
+                id="username" 
+                name="username" 
+                class="login-input" 
+                placeholder="Enter your username"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Create Password</label>
+            <div class="input-container">
+              <span class="input-icon"></span>
+              <input 
+                type="password" 
+                id="password" 
+                name="password" 
+                class="login-input" 
+                placeholder="Enter your password"
+                required
+              />
+            </div>
+          </div>
+
+          
+
+          <button type="button" class="login-btn {{#if isLoading}}loading{{/if}}">
+            {{#if isLoading}}
+              <span class="btn-spinner"></span>
+              Signing Up...
+            {{else}}
+              Sign Up
+            {{/if}}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</template>
