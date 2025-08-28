@@ -599,3 +599,100 @@
     font-size: 13px;
   }
 }
+
+/* === Signup Prompt === */
+.signup-prompt {
+  text-align: center;
+  margin: 20px 0 16px 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  position: relative;
+}
+
+.signup-prompt::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-color);
+  z-index: 1;
+}
+
+.signup-prompt span {
+  background: var(--surface-color);
+  padding: 0 16px;
+  position: relative;
+  z-index: 2;
+}
+
+/* === Signup Button === */
+.Signup-btn {
+  background: linear-gradient(145deg, #3498db, #2980b9);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.Signup-btn:hover:not(:disabled) {
+  background: linear-gradient(145deg, #2980b9, #3498db);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+}
+
+.Signup-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.2);
+}
+
+.Signup-btn.loading {
+  background: var(--text-muted);
+}
+
+
+.Signup-btn {
+  background: linear-gradient(145deg, #27ae60, #2ecc71);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.Signup-btn:hover:not(:disabled) {
+  background: linear-gradient(145deg, #2ecc71, #27ae60);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+}
+
+.Signup-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 4px 15px rgba(39, 174, 96, 0.2);
+}

@@ -110,8 +110,13 @@ function loadContainers() {
 // TEMPLATE LIFECYCLE
 // ===========================================
 
-Template.containerManager.onCreated(function() {
-  loadContainers();
+Template.containerManager.onCreated(async function() {
+  if(Meteor.userId()) {
+    console.log("hi");
+   
+  }
+   loadContainers();
+
 });
 
 // ===========================================

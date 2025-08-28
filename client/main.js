@@ -16,12 +16,20 @@ import "./register.js";
 FlowRouter.route('/home', {
   name: 'home',
   action() {
-    this.render('terminalApp', 'container');
+    if(Meteor.userId())
+     this.render('terminalApp', 'container');
+    else{
+      FlowRouter.go('login');
+    }
+    
   }
 });
 FlowRouter.route('/login', {
   name: 'login',
   action() {
+    if(Meteor.userId())
+      FlowRouter.go('home');
+    else
     this.render('terminalApp', 'login');
   }
 });
@@ -29,6 +37,23 @@ FlowRouter.route('/login', {
 FlowRouter.route('/register', {
   name: 'register',
   action() {
+    if(Meteor.userId())
+      FlowRouter.go('home');
     this.render('terminalApp', 'register');
   }
 });
+
+Template.container.onCreated(async function() {
+  
+});
+
+Template.container.events({
+  'click #logout-btn': function(event, template) {
+    event.preventDefault();
+    Meteor.logout(() => {
+      FlowRouter.go('login');
+    });
+  }
+});
+
+

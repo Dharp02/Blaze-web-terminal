@@ -25,8 +25,33 @@ Template.register.events({
       (error) => {
         if (error) {
           alert("Error creating user: " + error.message);
+        } else if (error.reason === "Email already exists.") {
+          alert("Email already exists.");
         } else {
-          FlowRouter.go('login');
+          // Password strength feedback
+          const password = passwordInput.value;
+          let feedback = [];
+          if (password.length < 8) {
+            feedback.push("Password is too short (min 8 characters)");
+          }
+          if (!/[0-9]/.test(password)) {
+            feedback.push("Password must include a number");
+          }
+          if (!/[A-Z]/.test(password)) {
+            feedback.push("Password must include an uppercase letter");
+          }
+          if (!/[a-z]/.test(password)) {
+            feedback.push("Password must include a lowercase letter");
+          }
+          if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+            feedback.push("Password must include a special character");
+          }
+          if (feedback.length > 0) {
+            alert("Password issues:\n" + feedback.join("\n"));
+          } else {
+            alert("Account created! Password is strong.");
+            FlowRouter.go('login');
+          }
         }
       },  
     );
