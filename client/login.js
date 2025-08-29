@@ -34,7 +34,7 @@ Template.login.events({
   'click .google-btn': function(event, template) {
     Meteor.loginWithGoogle(err => {
       if (!err) {
-        alert('Successfully Logged In');
+     
         FlowRouter.go('home');
       } 
       else{
