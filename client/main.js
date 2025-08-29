@@ -10,20 +10,38 @@ import 'meteor/dharapo:blaze-container-management'
 // Import templates
 import './main.html';
 import "./login.js";
-import "./register.html";
 import "./register.js";
+import "./mainWrapper.js";
 
-FlowRouter.route('/home', {
-  name: 'home',
+FlowRouter.route('/', {
+  name: 'root',
   action() {
     if(Meteor.userId())
-     this.render('terminalApp', 'container');
+
+      FlowRouter.go('home');
     else{
       FlowRouter.go('login');
     }
     
   }
 });
+
+FlowRouter.route('/home', {
+  name: 'home',
+  action() {
+    if(Meteor.userId())
+     this.render('terminalApp', 'mainWrapper');
+    else{
+      FlowRouter.go('login');
+    }
+    
+  }
+});
+
+
+
+
+
 FlowRouter.route('/login', {
   name: 'login',
   action() {
@@ -43,17 +61,6 @@ FlowRouter.route('/register', {
   }
 });
 
-Template.container.onCreated(async function() {
-  
-});
 
-Template.container.events({
-  'click #logout-btn': function(event, template) {
-    event.preventDefault();
-    Meteor.logout(() => {
-      FlowRouter.go('login');
-    });
-  }
-});
 
 

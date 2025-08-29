@@ -1,7 +1,7 @@
 import { Template } from 'meteor/templating';
 import { ReactiveVar } from 'meteor/reactive-var';
 import "./register.html";
-import "./login.css";
+import "./login.css"
 import { Accounts } from "meteor/accounts-base";
 import { FlowRouter } from 'meteor/ostrio:flow-router-extra';
 
