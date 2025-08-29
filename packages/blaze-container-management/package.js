@@ -1,6 +1,6 @@
 Package.describe({
   name: 'dharapo:blaze-container-management',
-  version: '0.0.2',
+  version: '0.0.3',
   summary: 'Docker container management with Blaze UI for Meteor applications',
   git: '',
   documentation: 'README.md'

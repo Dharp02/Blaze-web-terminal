@@ -1,0 +1,15 @@
+<template name="mainWrapper">
+  <div class="top-bar">
+    <div class="user-info">
+      <span class="username">{{currentUser.username}}</span>
+    </div>
+    <div class="logout-section">
+      <button class="Logout-btn" id="logout-btn">Logout</button>
+    </div>
+  </div>
+  
+  <div class="main-content">
+    {{> containerManager}}
+    {{> terminal}}
+  </div>
+</template>

@@ -1,0 +1,110 @@
+/* Top bar styles */
+.top-bar {
+  background-color: #2c3e50;
+  color: white;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+/* Username display */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.username {
+  font-size: 16px;
+  font-weight: 500;
+  color: #ecf0f1;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  background-color: #3498db;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  color: white;
+}
+
+/* Logout button styles */
+.logout-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.Logout-btn {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.Logout-btn:hover {
+  background-color: #c0392b;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+}
+
+.Logout-btn:active {
+  transform: translateY(0);
+}
+
+/* Main content area */
+.main-content {
+  padding: 20px;
+  min-height: calc(100vh - 56px);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .top-bar {
+    padding: 10px 15px;
+  }
+  
+  .username {
+    font-size: 14px;
+  }
+  
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  
+  .Logout-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-info {
+    gap: 8px;
+  }
+  
+  .logout-section {
+    gap: 10px;
+  }
+  
+  .username {
+    display: none; /* Hide username text on very small screens */
+  }
+}
