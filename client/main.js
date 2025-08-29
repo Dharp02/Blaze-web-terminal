@@ -12,6 +12,7 @@ import './main.html';
 import "./login.js";
 import "./register.js";
 import "./mainWrapper.js";
+import "./passwordReset.js"
 
 FlowRouter.route('/', {
   name: 'root',
@@ -62,5 +63,10 @@ FlowRouter.route('/register', {
 });
 
 
-
+FlowRouter.route('/passwordReset', {
+  name: 'forgotPassword',
+  action() {
+    this.render('terminalApp', 'forgotPassword');
+  }
+});
 

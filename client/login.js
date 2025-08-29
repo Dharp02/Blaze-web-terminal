@@ -50,7 +50,7 @@ Template.login.events({
 
     if (provider === 'facebook') {
       Meteor.loginWithFacebook({
-        requestPermissions: ['user_friends', 'public_profile', 'email']
+        requestPermissions: ['public_profile', 'email']
       }, (err) => {
         if (err) {
           alert("Error logging in with Facebook");
@@ -66,6 +66,11 @@ Template.login.events({
   'click .Signup-btn': function(event, template) {
     FlowRouter.go('register');
     
+  },
+
+  'click .forgot-password-btn': function(event, template) {
+    event.preventDefault();
+    FlowRouter.go('passwordReset');
   }
 
 
