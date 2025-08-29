@@ -24,3 +24,33 @@ Meteor.startup(async () => {
  
   console.log(' OAuth configuration completed!');
 });
+
+
+Meteor.methods({
+  async updateUserPassword(email, newPassword) {
+    // Validate inputs
+    if (!email || !newPassword) {
+      throw new Meteor.Error('invalid-input', 'Email and password are required');
+    }
+    
+    if (newPassword.length < 6) {
+      throw new Meteor.Error('password-too-short', 'Password must be at least 6 characters long');
+    }
+    
+    try {
+  
+    const user = await Accounts.findUserByEmail(email);
+    const NewPassword = await Accounts.setPasswordAsync(user._id, newPassword);
+      console.log('Found user:', user);
+      return {
+        success: true,
+        message: 'Password updated successfully'
+      };
+    
+    } catch (error) {
+      console.error('Password update failed:', error);
+      throw new Meteor.Error('update-failed', 'Failed to update password. Please try again.');
+    }
+    
+  }
+});
