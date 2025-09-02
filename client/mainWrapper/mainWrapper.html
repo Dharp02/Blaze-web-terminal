@@ -1,0 +1,47 @@
+<template name="mainWrapper">
+  <div class="top-bar">
+    <div class="user-info">
+      <span class="username">{{currentUser.username}}</span>
+    </div>
+    <div class="logout-section">
+      <button class="Logout-btn" id="logout-btn">Logout</button>
+    <div class="settings-container">
+        <button class="settings-btn" id="settings-btn">
+          ⚙️ Settings
+        </button>
+        
+        <!-- Settings Dropdown Menu -->
+        <div class="settings-dropdown {{#if showSettingsDropdown}}show{{/if}}" id="settings-dropdown">
+          <div class="dropdown-header">
+            <h4>Account Settings</h4>
+          </div>
+          
+          <div class="dropdown-menu">
+            <button class="dropdown-item" data-action="changePassword" id="change-password-btn">
+               Change Password
+            </button>
+<!--             
+            <button class="dropdown-item" data-action="changeUsername">
+               Change Username
+            </button>
+            
+            <button class="dropdown-item" data-action="updateEmail">
+               Update Email
+            </button>
+            
+            <div class="dropdown-divider"></div>
+            
+            <button class="dropdown-item danger" data-action="deleteAccount">
+               Delete Account
+            </button> -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="main-content">
+    {{> containerManager}}
+    {{> terminal}}
+  </div>
+</template>

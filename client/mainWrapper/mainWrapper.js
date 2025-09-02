@@ -16,6 +16,17 @@ Template.mainWrapper.events({
     Meteor.logout(() => {
       FlowRouter.go('login');
     });
+  },
+
+  'click #settings-btn': function(event, template) {
+    event.preventDefault();
+    const dropdown = template.$('#settings-dropdown');
+    dropdown.toggleClass('show');
+  },
+
+  'click #change-password-btn': function(event, template) {
+    event.preventDefault();
+    FlowRouter.go('changePassword');
   }
 });
 

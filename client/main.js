@@ -3,16 +3,17 @@ import { Template } from 'meteor/templating';
 import { ReactiveVar } from 'meteor/reactive-var';
 
 import { FlowRouter } from 'meteor/ostrio:flow-router-extra';
-
+import { Roles } from 'meteor/roles';
 import 'meteor/dharapo:blaze-terminal';
 import 'meteor/dharapo:blaze-container-management'
 
 // Import templates
 import './main.html';
-import "./login.js";
-import "./register.js";
-import "./mainWrapper.js";
-import "./passwordReset.js"
+import "./login/login.js";
+import "./register/register.js";
+import "./mainWrapper/mainWrapper.js";
+import "./passwordReset/passwordReset.js";
+import "./roles/roles.js";
 
 FlowRouter.route('/', {
   name: 'root',
@@ -41,8 +42,6 @@ FlowRouter.route('/home', {
 
 
 
-
-
 FlowRouter.route('/login', {
   name: 'login',
   action() {
@@ -63,10 +62,18 @@ FlowRouter.route('/register', {
 });
 
 
-FlowRouter.route('/passwordReset', {
-  name: 'forgotPassword',
+FlowRouter.route('/changePassword', {
+  name: 'changePassword',
   action() {
-    this.render('terminalApp', 'forgotPassword');
+    if(Meteor.userId()){
+      this.render('terminalApp', 'changePassword');
+    }
   }
 });
 
+FlowRouter.route('/roles', {
+  name: 'roles',
+  action() {
+      this.render('terminalApp', 'roleSelector');
+    }
+});
