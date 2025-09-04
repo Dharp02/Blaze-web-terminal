@@ -41,7 +41,14 @@
   </div>
   
   <div class="main-content">
-    {{> containerManager}}
-    {{> terminal}}
+    {{#if isInRole 'user'}}
+        {{> terminal}}
+    {{/if}}
+    {{#if isInRole 'admin'}}
+        {{> containerManager}}
+        {{> terminal}}
+    {{/if}}
+    
+
   </div>
 </template>

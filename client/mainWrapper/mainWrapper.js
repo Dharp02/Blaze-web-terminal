@@ -7,7 +7,6 @@ import "./mainWrapper.html";
 import "./mainWrapper.css";
 
 Template.mainWrapper.onCreated(function() {
-
 });
 
 Template.mainWrapper.events({
@@ -31,5 +30,8 @@ Template.mainWrapper.events({
 });
 
 Template.mainWrapper.helpers({
-  
+  async getCurrentUserRole() {
+    const role = await Meteor.call('getCurrentUserRole');
+    return role;
+  }
 })

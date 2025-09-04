@@ -71,6 +71,27 @@
             </div>
           </div>
 
+          <div class="form-group">
+          <label>Select Your Role:</label>
+          <div class="role-options">
+            <label class="role-option">
+              <input type="radio" id="role-user" class="role-radio" name="role" value="user" checked>
+              <span class="role-label">
+                <strong>User</strong>
+                
+              </span>
+            </label>
+            
+            <label class="role-option">
+              <input type="radio" id="role-admin" class="role-radio" name="role" value="admin">
+              <span class="role-label">
+                <strong>Admin</strong>
+                
+              </span>
+            </label>
+          </div>
+        </div>
+
           
 
           <button type="button" class="login-btn {{#if isLoading}}loading{{/if}}">

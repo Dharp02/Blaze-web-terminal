@@ -15,6 +15,7 @@ import "./mainWrapper/mainWrapper.js";
 import "./passwordReset/passwordReset.js";
 import "./roles/roles.js";
 
+
 FlowRouter.route('/', {
   name: 'root',
   action() {
@@ -74,6 +75,6 @@ FlowRouter.route('/changePassword', {
 FlowRouter.route('/roles', {
   name: 'roles',
   action() {
-      this.render('terminalApp', 'roleSelector');
+      this.render('terminalApp', 'serviceSelection');
     }
 });

@@ -111,10 +111,7 @@ function loadContainers() {
 // ===========================================
 
 Template.containerManager.onCreated(async function() {
-  if(Meteor.userId()) {
-    console.log("hi");
-   
-  }
+
    loadContainers();
 
 });
