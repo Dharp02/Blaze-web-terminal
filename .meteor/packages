@@ -29,7 +29,8 @@ dharapo:blaze-terminal
 ostrio:flow-router-extra
 accounts-base
 accounts-password
-alanning:roles
 email
 accounts-google
 accounts-facebook
+service-configuration
+roles
