@@ -33,9 +33,7 @@ Template.register.events({
         }
       }  
     );
-    }
-  
-  ,
+    },
 
 
 });

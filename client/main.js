@@ -13,7 +13,7 @@ import "./login/login.js";
 import "./register/register.js";
 import "./mainWrapper/mainWrapper.js";
 import "./passwordReset/passwordReset.js";
-import "./roles/roles.js";
+import "./serviceSelection/serviceSelection.js";
 
 
 FlowRouter.route('/', {
@@ -72,8 +72,8 @@ FlowRouter.route('/changePassword', {
   }
 });
 
-FlowRouter.route('/roles', {
-  name: 'roles',
+FlowRouter.route('/serviceSelection', {
+  name: 'serviceSelection',
   action() {
       this.render('terminalApp', 'serviceSelection');
     }

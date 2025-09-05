@@ -1,4 +1,5 @@
 <template name="serviceSelection">
+  
   <div class="service-selection">
     <div class="service-header">
       <h1>Choose a Service</h1>
@@ -6,7 +7,8 @@
     </div>
     
     <div class="service-options">
-      <div class="service-card vm-card">
+      
+      <div class="service-card vm-card" data-service="vm">
         <div class="service-content">
           <div class="service-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -25,7 +27,10 @@
         <div class="service-arrow">›</div>
       </div>
       
-      <div class="service-card container-card">
+      
+      
+      
+      <div class="service-card container-card" data-service="container">
         <div class="service-content">
           <div class="service-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -42,6 +47,9 @@
         </div>
         <div class="service-arrow">›</div>
       </div>
+      
+      
+      
     </div>
   </div>
 </template>
