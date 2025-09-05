@@ -36,3 +36,14 @@ Meteor.publish(null, function() {
     this.ready();
   }
 });
+
+
+Meteor.methods({
+  async assignRole(role) {
+    check(role, Match.OneOf('user', 'admin'));
+    if (!Meteor.userId()) {
+      throw new Meteor.Error('not-authorized');
+    }
+    await Roles.addUsersToRolesAsync(Meteor.userId(), role);
+  }
+});
