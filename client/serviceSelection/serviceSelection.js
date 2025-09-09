@@ -16,5 +16,9 @@ Template.serviceSelection.events({
   },
   'click .container-card': function(event) {
     FlowRouter.go('login');
+  },
+  'click .Both-Cards': function(event) {
+    FlowRouter.go('login');
   }
 });
+

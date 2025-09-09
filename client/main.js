@@ -4,12 +4,13 @@ import { ReactiveVar } from 'meteor/reactive-var';
 
 import { FlowRouter } from 'meteor/ostrio:flow-router-extra';
 import { Roles } from 'meteor/roles';
-import 'meteor/dharapo:blaze-terminal';
-import 'meteor/dharapo:blaze-container-management'
+
 
 // Import templates
 import './main.html';
 import "./login/login.js";
+import 'meteor/dharapo:blaze-terminal';
+import 'meteor/dharapo:blaze-container-management';
 import "./register/register.js";
 import "./mainWrapper/mainWrapper.js";
 import "./passwordReset/passwordReset.js";
@@ -57,7 +58,7 @@ FlowRouter.route('/register', {
   name: 'register',
   action() {
     if(Meteor.userId())
-      FlowRouter.go('home');
+      FlowRouter.go('serviceSelection');
     this.render('terminalApp', 'register');
   }
 });
@@ -75,6 +76,8 @@ FlowRouter.route('/changePassword', {
 FlowRouter.route('/serviceSelection', {
   name: 'serviceSelection',
   action() {
+    if(Meteor.userId()){
       this.render('terminalApp', 'serviceSelection');
     }
+  }
 });

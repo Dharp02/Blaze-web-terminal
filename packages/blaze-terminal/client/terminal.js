@@ -5,6 +5,7 @@ import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 
 import './terminal.html';
+import './terminal.css';
 
 // ===========================================
 // REACTIVE VARIABLES

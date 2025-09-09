@@ -7,13 +7,15 @@
     
     <div class="service-options">
       {{#if isInRole 'user'}}
-      <!-- VM Card - Show for all users -->
+      
         {{> vmcard}}
       {{/if}}
-      <!-- Container Card - Show only for admins -->
+      
       {{#if isInRole 'admin'}}
         {{> vmcard}}
-        <div class="service-card container-card" data-service="container">
+        {{> ContainerCard}}
+
+        <div class="Both-Cards" data-service="container">
           <div class="service-content">
             <div class="service-icon">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -24,12 +26,16 @@
                 </svg>
             </div>
             <div class="service-info">
-              <h3>Container<br/>Manager</h3>
-              <p>Manage databases and queries</p>
+              <h3>Both</h3>
+              <p>Manage containers and terminal</p>
             </div>
           </div>
           <div class="service-arrow">›</div>
         </div>
+
+
+
+
       {{/if}}
       
     </div>
@@ -58,4 +64,24 @@
         <div class="service-arrow">›</div>
       </div>
 
+</template>
+
+<template name="ContainerCard">
+  <div class="service-card container-card" data-service="container">
+          <div class="service-content">
+            <div class="service-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+                  <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+                  <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+                </svg>
+            </div>
+            <div class="service-info">
+              <h3>Container<br/>Manager</h3>
+              <p>Manage databases and queries</p>
+            </div>
+          </div>
+          <div class="service-arrow">›</div>
+        </div>
 </template>

@@ -357,3 +357,137 @@
     font-size: 1.25rem;
   }
 }
+
+/* Both Cards specific styling - add this to your existing CSS */
+.Both-Cards {
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.2) 0%, rgba(39, 174, 96, 0.1) 100%);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 32px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.Both-Cards::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.Both-Cards:hover::before {
+  opacity: 1;
+}
+
+.Both-Cards:hover {
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.3) 0%, rgba(39, 174, 96, 0.2) 100%);
+  transform: translateY(-8px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Ensure the service-content and service-arrow inside Both-Cards match the other cards */
+.Both-Cards .service-content {
+  flex: 1;
+}
+
+.Both-Cards .service-icon {
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  transition: all 0.3s ease;
+}
+
+.Both-Cards:hover .service-icon {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.1);
+}
+
+.Both-Cards .service-info h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 8px 0;
+  line-height: 1.3;
+}
+
+.Both-Cards .service-info p {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.Both-Cards .service-arrow {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.3s ease;
+  font-size: 2rem;
+  opacity: 0.4;
+  font-weight: 300;
+}
+
+.Both-Cards:hover .service-arrow {
+  color: #ffffff;
+  transform: translateX(4px);
+  opacity: 0.8;
+}
+
+/* Responsive styling for Both-Cards */
+@media (max-width: 768px) {
+  .Both-Cards {
+    padding: 24px;
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
+  }
+  
+  .Both-Cards .service-content {
+    text-align: center;
+  }
+  
+  .Both-Cards .service-arrow {
+    transform: rotate(90deg);
+  }
+  
+  .Both-Cards:hover .service-arrow {
+    transform: rotate(90deg) translateX(4px);
+  }
+}
+
+@media (max-width: 480px) {
+  .Both-Cards {
+    padding: 20px;
+  }
+  
+  .Both-Cards .service-icon {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .Both-Cards .service-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .Both-Cards .service-info h3 {
+    font-size: 1.25rem;
+  }
+}
