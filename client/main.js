@@ -59,6 +59,7 @@ FlowRouter.route('/register', {
   action() {
     if(Meteor.userId())
       FlowRouter.go('serviceSelection');
+    else
     this.render('terminalApp', 'register');
   }
 });
@@ -78,6 +79,9 @@ FlowRouter.route('/serviceSelection', {
   action() {
     if(Meteor.userId()){
       this.render('terminalApp', 'serviceSelection');
+    }
+    else{
+      FlowRouter.go('login');
     }
   }
 });

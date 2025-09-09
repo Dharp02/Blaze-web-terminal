@@ -11,14 +11,14 @@ import "./serviceSelection.css";
 
 Template.serviceSelection.events({
   'click .vm-card': function(event) {
-      FlowRouter.go('login');
+    Meteor.logout(() => {
+    FlowRouter.go('login');
+  });
+
+  },
+  
+  'click .Available-Containers': function(event) {
     
-  },
-  'click .container-card': function(event) {
-    FlowRouter.go('login');
-  },
-  'click .Both-Cards': function(event) {
-    FlowRouter.go('login');
   }
 });
 
