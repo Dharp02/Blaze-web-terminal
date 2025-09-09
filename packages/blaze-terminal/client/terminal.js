@@ -884,8 +884,23 @@ Template.terminal.events({
   'click .connect-containers-btn'(event) {
     event.preventDefault();
     isContainerMode.set(true);
-    console.log('Connect to Containers clicked');
-    handleContainerConnection();
+    Meteor.call('createContainer', (error, result) => {
+    if (!error && result.success) {
+    console.log('Container created, waiting for SSH service to start...');
+    
+    showConnectionModal.set(false);
+
+    setTimeout(() => {
+      createTerminalWithSSH({
+        host: 'localhost',
+        port: parseInt(result.sshPort),
+        username: 'root',
+        password: 'changeme'
+      });
+    }, 3000);
+  }
+  });
+
   },
   
   'click .terminal-tab'(event) {
