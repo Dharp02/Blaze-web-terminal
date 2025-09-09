@@ -9,13 +9,7 @@
       {{#if isInRole 'user'}}
       
         {{> vmcard}}
-      {{/if}}
-      
-      {{#if isInRole 'admin'}}
-        {{> vmcard}}
-        {{> ContainerCard}}
-
-        <div class="Both-Cards" data-service="container">
+        <div class="Available-Containers" data-service="container">
           <div class="service-content">
             <div class="service-icon">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -26,8 +20,8 @@
                 </svg>
             </div>
             <div class="service-info">
-              <h3>Both</h3>
-              <p>Manage containers and terminal</p>
+              <h3>Available Containers</h3>
+              <p>Check out the available containers</p>
             </div>
           </div>
           <div class="service-arrow">›</div>
@@ -35,6 +29,12 @@
 
 
 
+
+      {{/if}}
+      
+      {{#if isInRole 'admin'}}
+        {{> vmcard}}
+        {{> ContainerCard}}
 
       {{/if}}
       

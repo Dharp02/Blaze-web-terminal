@@ -358,8 +358,7 @@
   }
 }
 
-/* Both Cards specific styling - add this to your existing CSS */
-.Both-Cards {
+.Available-Containers {
   background: linear-gradient(135deg, rgba(46, 204, 113, 0.2) 0%, rgba(39, 174, 96, 0.1) 100%);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -374,7 +373,7 @@
   overflow: hidden;
 }
 
-.Both-Cards::before {
+.Available-Containers::before {
   content: '';
   position: absolute;
   top: 0;
@@ -386,23 +385,23 @@
   transition: opacity 0.3s ease;
 }
 
-.Both-Cards:hover::before {
+.Available-Containers:hover::before {
   opacity: 1;
 }
 
-.Both-Cards:hover {
+.Available-Containers:hover {
   background: linear-gradient(135deg, rgba(46, 204, 113, 0.3) 0%, rgba(39, 174, 96, 0.2) 100%);
   transform: translateY(-8px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-/* Ensure the service-content and service-arrow inside Both-Cards match the other cards */
-.Both-Cards .service-content {
+/* Ensure the service-content and service-arrow inside Available-Containers match the other cards */
+.Available-Containers .service-content {
   flex: 1;
 }
 
-.Both-Cards .service-icon {
+.Available-Containers .service-icon {
   flex-shrink: 0;
   width: 80px;
   height: 80px;
@@ -415,12 +414,12 @@
   transition: all 0.3s ease;
 }
 
-.Both-Cards:hover .service-icon {
+.Available-Containers:hover .service-icon {
   background: rgba(255, 255, 255, 0.25);
   transform: scale(1.1);
 }
 
-.Both-Cards .service-info h3 {
+.Available-Containers .service-info h3 {
   font-size: 1.5rem;
   font-weight: 600;
   color: #ffffff;
@@ -428,14 +427,14 @@
   line-height: 1.3;
 }
 
-.Both-Cards .service-info p {
+.Available-Containers .service-info p {
   font-size: 1rem;
   color: rgba(255, 255, 255, 0.7);
   margin: 0;
   line-height: 1.5;
 }
 
-.Both-Cards .service-arrow {
+.Available-Containers .service-arrow {
   flex-shrink: 0;
   color: rgba(255, 255, 255, 0.6);
   transition: all 0.3s ease;
@@ -444,50 +443,50 @@
   font-weight: 300;
 }
 
-.Both-Cards:hover .service-arrow {
+.Available-Containers:hover .service-arrow {
   color: #ffffff;
   transform: translateX(4px);
   opacity: 0.8;
 }
 
-/* Responsive styling for Both-Cards */
+/* Responsive styling for Available-Containers */
 @media (max-width: 768px) {
-  .Both-Cards {
+  .Available-Containers {
     padding: 24px;
     flex-direction: column;
     text-align: center;
     gap: 20px;
   }
-  
-  .Both-Cards .service-content {
+
+  .Available-Containers .service-content {
     text-align: center;
   }
-  
-  .Both-Cards .service-arrow {
+
+  .Available-Containers .service-arrow {
     transform: rotate(90deg);
   }
-  
-  .Both-Cards:hover .service-arrow {
+
+  .Available-Containers:hover .service-arrow {
     transform: rotate(90deg) translateX(4px);
   }
 }
 
 @media (max-width: 480px) {
-  .Both-Cards {
+  .Available-Containers {
     padding: 20px;
   }
-  
-  .Both-Cards .service-icon {
+
+  .Available-Containers .service-icon {
     width: 60px;
     height: 60px;
   }
-  
-  .Both-Cards .service-icon svg {
+
+  .Available-Containers .service-icon svg {
     width: 32px;
     height: 32px;
   }
-  
-  .Both-Cards .service-info h3 {
+
+  .Available-Containers .service-info h3 {
     font-size: 1.25rem;
   }
 }
