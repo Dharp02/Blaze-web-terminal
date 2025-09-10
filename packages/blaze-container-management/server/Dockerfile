@@ -23,3 +23,4 @@ EXPOSE 22
 
 # Start the SSH service in the foreground
 CMD ["/usr/sbin/sshd", "-D"]
+#start

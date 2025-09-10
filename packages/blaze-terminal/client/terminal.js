@@ -890,14 +890,13 @@ Template.terminal.events({
     
     showConnectionModal.set(false);
 
-    setTimeout(() => {
-      createTerminalWithSSH({
+     createTerminalWithSSH({
         host: 'localhost',
         port: parseInt(result.sshPort),
         username: 'root',
         password: 'changeme'
       });
-    }, 3000);
+ 
   }
   });
 
