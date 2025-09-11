@@ -1,0 +1,29 @@
+name: Development CI
+
+on:
+  push:
+    branches: [ development ]
+
+jobs:
+  hello-world:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Say Hello
+      run: |
+        echo " Hello from development branch!"
+        echo " Build time: $(date)"
+        echo " Commit: ${{ github.sha }}"
+        echo " Pushed by: ${{ github.actor }}"
+        
+    - name: List files
+      run: |
+        echo " Project files:"
+        ls -la
+        
+    - name: Simple test
+      run: |
+        echo " Development build completed successfully!"
