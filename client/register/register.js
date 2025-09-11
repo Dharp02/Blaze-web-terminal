@@ -27,9 +27,13 @@ Template.register.events({
           alert("Error creating user: " + error.message);
         } else {
             await Meteor.call('assignRole', roleInput);
-            FlowRouter.go('serviceSelection');
-        }
-      }  
+            if (roleInput === 'user') {
+              FlowRouter.go('serviceSelection');
+          } else {
+            FlowRouter.go('login');
+          }
+      }
+    }  
     );
     },
 

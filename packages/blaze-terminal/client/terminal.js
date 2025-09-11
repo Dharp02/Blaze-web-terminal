@@ -5,6 +5,7 @@ import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 
 import './terminal.html';
+import './terminal.css';
 
 // ===========================================
 // REACTIVE VARIABLES
@@ -883,8 +884,22 @@ Template.terminal.events({
   'click .connect-containers-btn'(event) {
     event.preventDefault();
     isContainerMode.set(true);
-    console.log('Connect to Containers clicked');
-    handleContainerConnection();
+    Meteor.call('createContainer', (error, result) => {
+    if (!error && result.success) {
+    console.log('Container created, waiting for SSH service to start...');
+    
+    showConnectionModal.set(false);
+
+     createTerminalWithSSH({
+        host: 'localhost',
+        port: parseInt(result.sshPort),
+        username: 'root',
+        password: 'changeme'
+      });
+ 
+  }
+  });
+
   },
   
   'click .terminal-tab'(event) {
