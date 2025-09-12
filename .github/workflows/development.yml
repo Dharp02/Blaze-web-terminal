@@ -28,6 +28,19 @@ jobs:
             
             echo "Starting deployment process..."
             
+            # Set up environment
+            export PATH="$HOME/.meteor:$PATH"
+            
+            # Define meteor command with fallback
+            if command -v meteor >/dev/null 2>&1; then
+                METEOR_CMD="meteor"
+            else
+                METEOR_CMD="$HOME/.meteor/meteor"
+            fi
+            
+            echo "Using Meteor command: $METEOR_CMD"
+            $METEOR_CMD --version
+            
             # Navigate to project directory
             cd Blaze-web-terminal/
             
@@ -49,11 +62,11 @@ jobs:
             npm ci --omit=dev
             
             echo "Installing Meteor dependencies..."
-            meteor npm ci --omit=dev
+            $METEOR_CMD npm install --omit=dev
             
             # Reset Meteor (only if needed for schema changes)
             echo "Resetting Meteor database..."
-            meteor reset
+            $METEOR_CMD reset
             
             # Start the application
             echo "Starting application..."
