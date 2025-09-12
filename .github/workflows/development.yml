@@ -46,10 +46,10 @@ jobs:
             
             # Install dependencies
             echo "Installing Node.js dependencies..."
-            npm ci --production
+            npm ci --omit=dev
             
             echo "Installing Meteor dependencies..."
-            meteor npm ci --production
+            meteor npm ci --omit=dev
             
             # Reset Meteor (only if needed for schema changes)
             echo "Resetting Meteor database..."
