@@ -76,6 +76,7 @@ jobs:
             echo "Verifying deployment..."
             sleep 5
             pm2 list
-            pm2 logs 0 --lines 10
+            sleep 5
+            pm2 logs 0 --lines 10 --nostream
             
             echo "Deployment completed successfully at $(date)"
