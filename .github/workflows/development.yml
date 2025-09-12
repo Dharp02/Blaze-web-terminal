@@ -27,3 +27,33 @@ jobs:
     - name: Simple test
       run: |
         echo " Development build completed successfully!"
+
+  deploy-to-linux:
+    runs-on: ubuntu-latest
+    needs: hello-world
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Deploy to Linux Server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_KEY }}
+        port: ${{ secrets.PORT }}
+        script: |
+          echo " Hello ${{ github.actor }}!"
+          echo " Deployment time: $(date)"
+          echo " Deployed commit: ${{ github.sha }}"
+          echo " Server: $(hostname)"
+          echo " Current directory: $(pwd)"
+          echo " Available disk space: $(df -h / | tail -1 | awk '{print $4}')"
+          echo " Memory usage: $(free -h | grep Mem | awk '{print $3"/"$2}')"
+          
+          
+          
+          
+          
+         

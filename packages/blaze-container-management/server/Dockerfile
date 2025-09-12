@@ -7,7 +7,7 @@ RUN apt-get update && \
     apt-get clean
 
 # Create the directory for the SSH daemon to run
-RUN mkdir /var/run/sshd
+RUN mkdir -p /var/run/sshd
 
 # Set a root password (change 'changeme' to your secure password)
 RUN echo 'root:changeme' | chpasswd
