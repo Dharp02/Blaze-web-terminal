@@ -21,4 +21,13 @@ jobs:
         script: |
           pwd
           ls -la
+          cd Blaze-web-terminal/
+          pm2 list
+          pm2 stop 0
+          git fetch
+          git pull
+          npm install
+          meteor npm install
+          meteor reset
+          pm2 start 0
           echo "Deployment completed successfully!"
