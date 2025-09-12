@@ -1,33 +1,68 @@
-name: Development CI
+name: Deploy to Production
 
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  deploy-to-linux:
+  deploy:
     runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    environment: production
     
-    - name: Deploy to Linux Server
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        key: ${{ secrets.SSH_KEY }}
-        port: ${{ secrets.PORT }}
-        script: |
-          pwd
-          ls -la
-          cd Blaze-web-terminal/
-          pm2 list
-          pm2 stop 0
-          git fetch
-          git pull
-          npm install
-          meteor npm install
-          meteor reset
-          pm2 start 0
-          echo "Deployment completed successfully!"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.PORT }}
+          timeout: 60s
+          command_timeout: 15m
+          script: |
+            set -e
+            
+            echo "Starting deployment process..."
+            
+            # Navigate to project directory
+            cd Blaze-web-terminal/
+            
+            # Check current PM2 status
+            echo "Current PM2 processes:"
+            pm2 list
+            
+            # Stop the application
+            echo "Stopping application..."
+            pm2 stop 0 || echo "Application was not running"
+            
+            # Update codebase
+            echo "Updating codebase..."
+            git fetch origin main
+            git reset --hard origin/main
+            
+            # Install dependencies
+            echo "Installing Node.js dependencies..."
+            npm ci --production
+            
+            echo "Installing Meteor dependencies..."
+            meteor npm ci --production
+            
+            # Reset Meteor (only if needed for schema changes)
+            echo "Resetting Meteor database..."
+            meteor reset
+            
+            # Start the application
+            echo "Starting application..."
+            pm2 start 0
+            
+            # Verify deployment
+            echo "Verifying deployment..."
+            sleep 5
+            pm2 list
+            pm2 logs 0 --lines 10
+            
+            echo "Deployment completed successfully at $(date)"
