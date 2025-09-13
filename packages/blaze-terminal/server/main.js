@@ -432,7 +432,7 @@ class SimpleTerminalServer {
 }
 
 // Start server
-const server = new SimpleTerminalServer(8080);
+const server = new SimpleTerminalServer(3002);
 server.start();
 
 // Log session stats periodically
