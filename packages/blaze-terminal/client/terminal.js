@@ -196,7 +196,7 @@ function connectWebSocket() {
   console.log('Connecting to WebSocket server...');
   
   try {
-    websocket = new WebSocket('ws://localhost:8080');
+    websocket = new WebSocket('ws://localhost:3002');
     
     websocket.onopen = () => {
       console.log('WebSocket connected');

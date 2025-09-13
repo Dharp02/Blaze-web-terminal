@@ -40,10 +40,7 @@
     gap: 8px;
   }
   
-  .btn-primary,
-  .btn-secondary {
-    width: 100%;
-  }
+  
 }
 
 /* === Login Container === */
@@ -297,22 +294,6 @@
   font-weight: 600;
 }
 
-.modal-close {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 24px;
-  padding: 4px;
-  border-radius: 4px;
-  transition: var(--transition);
-  line-height: 1;
-}
-
-.modal-close:hover {
-  background: var(--error-color);
-  color: white;
-}
 
 .modal-body {
   padding: 24px;
@@ -332,48 +313,11 @@
   margin-top: 20px;
 }
 
-.btn-primary {
-  background: linear-gradient(145deg, #27ae60, #2ecc71);
-  color: white;
-  border: none;
-  border-radius: var(--border-radius);
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: var(--transition);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
-.btn-primary:hover:not(:disabled) {
-  background: linear-gradient(145deg, #2ecc71, #27ae60);
-  transform: translateY(-1px);
-}
 
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
 
-.btn-secondary {
-  background: var(--surface-light);
-  color: var(--text-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--border-radius);
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: var(--transition);
-}
 
-.btn-secondary:hover {
-  background: var(--surface-color);
-  border-color: var(--text-muted);
-}
+
 
 /* === Form Styles === */
 .login-form {
