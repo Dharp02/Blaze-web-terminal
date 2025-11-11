@@ -31,19 +31,17 @@ Template.login.events({
       );
   },
 
-  'click .google-btn': function(event, template) {
-    Meteor.loginWithGoogle(err => {
-      if (!err) {
-     
-        FlowRouter.go('home');
-      } 
-      else{
-        alert(err.reason || 'Unknown Error');
-      }
-    });
-
-    
-  },
+  'click .google-btn': async function (event, template) {
+    Meteor.loginWithGoogle(async (err) => {
+    if (!err) {
+      await Meteor.call('assignRole', "user");
+      FlowRouter.go('home');
+    } 
+    else {
+      alert(err.reason || 'Unknown Error');
+    }
+  });
+},
 
   'click .facebook-btn': function(event, template) {
     const provider = event.currentTarget.dataset.provider;
