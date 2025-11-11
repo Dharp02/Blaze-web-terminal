@@ -47,9 +47,9 @@
       "integrity": "sha512-9IkYqtX3YHPCzoVg1Py+o9057a3i0fp7S530UWokCSaFVTc7CwXPRiOjRjBQQ18ZCNafx78YfnG+HALxtVmOGA=="
     },
     "debug": {
-      "version": "4.4.1",
-      "resolved": "https://registry.npmjs.org/debug/-/debug-4.4.1.tgz",
-      "integrity": "sha512-KcKCqiftBJcZr++7ykoDIEwSa3XWowTfNPo92BYxjXiyYEVrUQh2aLyhxBCwww+heortUFxEJYcRzosstTEBYQ=="
+      "version": "4.4.3",
+      "resolved": "https://registry.npmjs.org/debug/-/debug-4.4.3.tgz",
+      "integrity": "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA=="
     },
     "docker-modem": {
       "version": "5.0.6",
@@ -92,9 +92,9 @@
       "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA=="
     },
     "nan": {
-      "version": "2.23.0",
-      "resolved": "https://registry.npmjs.org/nan/-/nan-2.23.0.tgz",
-      "integrity": "sha512-1UxuyYGdoQHcGg87Lkqm3FzefucTa0NAiOcuRsDmysep3c1LVCRK2krrUDafMWtjSG04htvAmvg96+SDknOmgQ=="
+      "version": "2.23.1",
+      "resolved": "https://registry.npmjs.org/nan/-/nan-2.23.1.tgz",
+      "integrity": "sha512-r7bBUGKzlqk8oPBDYxt6Z0aEdF1G1rwlMcLk8LCOMbOzf0mG+JUfUzG4fIMWwHWP0iyaLWEQZJmtB7nOHEm/qw=="
     },
     "once": {
       "version": "1.4.0",
@@ -127,9 +127,9 @@
       "integrity": "sha512-Q5thBSxp5t8WPTTJQS59LrGqOZqOsrhDGDVm8azCqIBjSBd7nd9o2PM+mDulQQkh8h//4U6hFZnc/mul8t5pWQ=="
     },
     "ssh2": {
-      "version": "1.16.0",
-      "resolved": "https://registry.npmjs.org/ssh2/-/ssh2-1.16.0.tgz",
-      "integrity": "sha512-r1X4KsBGedJqo7h8F5c4Ybpcr5RjyP+aWIG007uBPRjmdQWfEiVLzSK71Zji1B9sKxwaCvD8y8cwSkYrlLiRRg=="
+      "version": "1.17.0",
+      "resolved": "https://registry.npmjs.org/ssh2/-/ssh2-1.17.0.tgz",
+      "integrity": "sha512-wPldCk3asibAjQ/kziWQQt1Wh3PgDFpC0XpwclzKcdT1vql6KeYxf5LIt4nlFkUeR8WuphYMKqUA56X4rjbfgQ=="
     },
     "string_decoder": {
       "version": "1.3.0",
