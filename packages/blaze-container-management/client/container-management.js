@@ -203,43 +203,58 @@ Template.containerManager.events({
   "click .connect-btn": function(event, template) {
     event.preventDefault();
     
-    const container = this; // Container data from template context
+    const container = this;
     
-    console.log(' Connect button clicked for:', container.name);
-    
-    // Check if terminal package is available
     if (isTerminalPackageAvailable()) {
-      console.log(' Terminal package detected - using direct integration');
+      const method = confirm(
+        `Connect to ${container.name}\n\n` +
+        `Choose connection method:\n\n` +
+        `OK = Docker Exec (direct, no SSH)\n` +
+        `Cancel = SSH (requires password)`
+      );
       
-      // Create SSH config for container
-      const sshConfig = createConnectionData(container);
-      
-      console.log(' Connecting to container:', sshConfig);
-      
-      // Use terminal package directly
-      const success = window.TerminalAPI.createDirectConnection(sshConfig);
-      
-      if (success) {
-        console.log(' Direct connection successful');
+      if (method) {
+        const success = window.TerminalAPI.createContainerConnection({
+          containerName: container.name,
+          method: 'docker'
+        });
         
-        // Optional: Show success feedback
-        const btn = $(event.currentTarget);
-        const originalText = btn.text();
-        btn.text('Connected!').css('background', '#4caf50');
-        
-        setTimeout(() => {
-          btn.text(originalText).css('background', '');
-        }, 2000);
-        
+        if (success) {
+          const btn = $(event.currentTarget);
+          const originalText = btn.text();
+          btn.text('Connected!').css('background', '#4caf50');
+          
+          setTimeout(() => {
+            btn.text(originalText).css('background', '');
+          }, 2000);
+        } else {
+          console.error(' Docker exec connection failed');
+          alert('Failed to connect to container. Please try again.');
+        }
       } else {
-        console.error(' Direct connection failed');
-        alert('Failed to connect to container. Please try again.');
+        const sshConfig = createConnectionData(container);
+        
+        const success = window.TerminalAPI.createContainerConnection({
+          containerName: container.name,
+          method: 'ssh',
+          sshConfig: sshConfig
+        });
+        
+        if (success) {
+          const btn = $(event.currentTarget);
+          const originalText = btn.text();
+          btn.text('Connected!').css('background', '#4caf50');
+          
+          setTimeout(() => {
+            btn.text(originalText).css('background', '');
+          }, 2000);
+        } else {
+          console.error('SSH connection failed');
+          alert('Failed to connect to container. Please try again.');
+        }
       }
       
     } else {
-      console.log(' Terminal package not available - using fallback modal');
-      
-      //  Show original connection modal 
       showContainerConnectionModal(container);
     }
   },

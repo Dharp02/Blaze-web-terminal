@@ -187,16 +187,30 @@ function fillConnectionForm(connection) {
 // WEBSOCKET FUNCTIONS
 // ===========================================
 
-function connectWebSocket() {
+function connectWebSocket(containerName = null, containerId = null, method = 'docker') {
   if (isConnecting || (websocket && websocket.readyState === WebSocket.OPEN)) {
     return;
   }
   
   isConnecting = true;
-  console.log('Connecting to WebSocket server...');
+  
+  // Build WebSocket URL with path-based routing (required)
+  let wsUrl = 'ws://localhost:3002';
+  
+  if (containerName) {
+    wsUrl += `/socket/name/${encodeURIComponent(containerName)}?method=${method}`;
+    console.log('Connecting to container by name:', containerName, 'method:', method);
+  } else if (containerId) {
+    wsUrl += `/socket/id/${encodeURIComponent(containerId)}?method=${method}`;
+    console.log('Connecting to container by ID:', containerId, 'method:', method);
+  } else {
+    console.error('Container name or ID required - legacy mode removed');
+    isConnecting = false;
+    return;
+  }
   
   try {
-    websocket = new WebSocket('ws://localhost:3002');
+    websocket = new WebSocket(wsUrl);
     
     websocket.onopen = () => {
       console.log('WebSocket connected');
@@ -224,7 +238,7 @@ function connectWebSocket() {
       if (reconnectAttempts < maxReconnectAttempts) {
         reconnectAttempts++;
         console.log(`Reconnecting... (${reconnectAttempts}/${maxReconnectAttempts})`);
-        setTimeout(connectWebSocket, 2000 * reconnectAttempts);
+        setTimeout(() => connectWebSocket(containerName, containerId, method), 2000 * reconnectAttempts);
       }
     };
     
@@ -269,11 +283,8 @@ function showWebSocketError(message) {
 // ===========================================
 
 function handleWebSocketMessage(data) {
-  console.log('Received:', data.type, data.sessionId ? `(${data.sessionId.substr(0, 8)})` : '');
-  
   switch (data.type) {
     case 'connected':
-      console.log('WebSocket server connected');
       break;
 
     case 'existing_sessions':
@@ -369,9 +380,27 @@ function handleTerminalCreated(data) {
   const { sessionId, shell, platform, host } = data;
   console.log('Terminal created:', sessionId.substr(0, 8));
   
-  const terminalInstance = terminalInstances.get(sessionId);
-  if (terminalInstance) {
-    // Don't show any status messages - just clear and let SSH output show
+  // If terminal instance doesn't exist yet, initialize it
+  // This happens when the server creates the terminal before the UI is rendered
+  if (!terminalInstances.has(sessionId)) {
+    console.log('Terminal instance not found, initializing...');
+    Meteor.setTimeout(() => {
+      initializeTerminal(sessionId, false);
+      
+      // After initialization, set up the terminal
+      const terminalInstance = terminalInstances.get(sessionId);
+      if (terminalInstance) {
+        terminalInstance.clear();
+        terminalSessions.set(sessionId, { connected: true, shell, platform, host });
+        
+        Meteor.setTimeout(() => {
+          focusTerminal(sessionId);
+        }, 100);
+      }
+    }, 100);
+  } else {
+    const terminalInstance = terminalInstances.get(sessionId);
+    // Don't show any status messages - just clear and let output show
     terminalInstance.clear();
     
     terminalSessions.set(sessionId, { connected: true, shell, platform, host });
@@ -501,8 +530,6 @@ function initializeTerminal(terminalId, isReconnection = false) {
       return;
     }
     
-    console.log('Container found, creating terminal instance');
-    
     const term = new Terminal({
       cursorBlink: true,
       fontSize: 14,
@@ -546,43 +573,29 @@ function initializeTerminal(terminalId, isReconnection = false) {
     if (!isReconnection) {
       term.reset();
       term.clear();
-      console.log('Terminal cleared (new connection)');
-    } else {
-      console.log('Terminal NOT cleared (reconnection - preserving content)');
     }
     
-    // Fit after a short delay
     Meteor.setTimeout(() => {
       fitAddon.fit();
-      console.log('Terminal fitted:', term.cols + 'x' + term.rows);
     }, 100);
     
     terminalInstances.set(terminalId, term);
     
-    // CRITICAL: Set up input handling IMMEDIATELY
     setupTerminalInput(term, terminalId);
     monitorScrollAreaHeight(terminalId);
-    // Add click handlers for focus
+    
     container.addEventListener('click', () => {
-      console.log('Container clicked, focusing terminal');
       focusTerminal(terminalId);
     });
     
-    // Focus the terminal
     Meteor.setTimeout(() => {
       term.focus();
-      console.log('Terminal focused and ready');
     }, 200);
-    
-    console.log('Terminal setup complete');
     
   }, 100);
 }
 
 function setupTerminalInput(term, terminalId) {
-  console.log('Setting up input handling for terminal:', terminalId);
-  
-  // THE MOST IMPORTANT PART: onData handler for input
   term.onData(data => {
     console.log('INPUT RECEIVED:', JSON.stringify(data), 'for terminal:', terminalId);
     
@@ -1286,6 +1299,100 @@ window.TerminalAPI = {
     createTerminalWithSSH(sshConfig);
     
     console.log('Direct connection initiated');
+    return true;
+  },
+
+  /**
+   * Create container connection (Docker exec or SSH)
+   * @param {Object} options - Connection options
+   * @param {string} options.containerName - Container name (use this OR containerId)
+   * @param {string} options.containerId - Container ID (use this OR containerName)
+   * @param {string} options.method - Connection method: 'docker' or 'ssh' (default: 'docker')
+   * @param {Object} options.sshConfig - SSH config (required if method='ssh')
+   */
+  createContainerConnection(options) {
+    const { containerName, containerId, method = 'docker', sshConfig } = options;
+    
+    console.log('Container connection requested:', containerName || containerId, 'method:', method);
+    
+    // Validate options
+    if (!containerName && !containerId) {
+      console.error('Container name or ID required');
+      return false;
+    }
+
+    if (method === 'ssh' && (!sshConfig || !sshConfig.username || !sshConfig.password)) {
+      console.error('SSH config required for SSH method');
+      return false;
+    }
+    
+    // Show terminal panel if hidden
+    isTerminalVisible.set(true);
+    
+    // Close existing WebSocket if open
+    if (websocket && websocket.readyState === WebSocket.OPEN) {
+      websocket.close();
+      websocket = null;
+    }
+    
+    // Connect WebSocket with path-based routing
+    connectWebSocket(containerName, containerId, method);
+    
+    // Wait for WebSocket to connect, then create terminal
+    const checkConnection = setInterval(() => {
+      if (websocket && websocket.readyState === WebSocket.OPEN) {
+        clearInterval(checkConnection);
+        
+        const newId = Random.id();
+        const currentTerminals = terminals.get();
+        
+        const title = method === 'docker' 
+          ? `docker:${containerName || containerId.substring(0, 12)}`
+          : `${sshConfig.username}@${containerName || containerId.substring(0, 12)}`;
+        
+        const newTerminal = {
+          id: newId,
+          title: title,
+          isActive: true,
+          status: 'connecting'
+        };
+        
+        const updatedTerminals = currentTerminals.map(t => ({
+          ...t,
+          isActive: false
+        }));
+        
+        terminals.set([...updatedTerminals, newTerminal]);
+        activeTerminalId.set(newId);
+        
+        console.log('Creating container terminal:', title);
+        
+        // Send terminal creation request
+        const message = {
+          type: 'create_terminal',
+          sessionId: newId,
+          cols: 100,
+          rows: 30
+        };
+        
+        // Only add SSH config for SSH method
+        if (method === 'ssh') {
+          message.sshConfig = sshConfig;
+        }
+        
+        websocket.send(JSON.stringify(message));
+        
+        // Save sessions
+        saveActiveSessions();
+      }
+    }, 100);
+    
+    // Timeout after 5 seconds
+    setTimeout(() => {
+      clearInterval(checkConnection);
+    }, 5000);
+    
+    console.log('Container connection initiated');
     return true;
   },
   

@@ -2,9 +2,16 @@ import { Meteor } from 'meteor/meteor';
 import Docker from 'dockerode';
 import path from 'path';
 
-const docker = new Docker();
 const fs = require('fs');
 const os = require('os');
+
+// Initialize Docker with proper socket path for macOS
+const dockerSocketPath = process.platform === 'darwin' 
+  ? `${os.homedir()}/.docker/run/docker.sock`
+  : '/var/run/docker.sock';
+
+const docker = new Docker({ socketPath: dockerSocketPath });
+console.log('Container management: Docker initialized with socket:', dockerSocketPath);
 
 Meteor.methods({
    createContainer: async function() {
@@ -96,7 +103,8 @@ Meteor.methods({
             
             // Format containers for the UI
             const formattedContainers = containers.map(container => {
-                const sshPort = container.Ports.find(port => port.PrivatePort === 22);
+                const ports = container.Ports || [];
+                const sshPort = ports.find(port => port.PrivatePort === 22);
                 
                 return {
                     id: container.Id,
