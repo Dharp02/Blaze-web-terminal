@@ -96,9 +96,11 @@ Meteor.methods({
             
             // Format containers for the UI
             const formattedContainers = containers.map(container => {
-                const sshPort = container.Ports.find(port => port.PrivatePort === 22);
+              const sshPort = Array.isArray(container.Ports)
+                ? container.Ports.find(port => port.PrivatePort === 22)
+                : null;
                 
-                return {
+              return {
                     id: container.Id,
                     containerId: container.Id,
                     name: container.Names[0].replace('/', ''), // Remove leading slash
