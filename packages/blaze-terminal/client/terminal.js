@@ -194,8 +194,12 @@ function connectWebSocket(containerName = null, containerId = null, method = 'do
   
   isConnecting = true;
   
-  // Build WebSocket URL with path-based routing (required)
-  let wsUrl = 'ws://localhost:3002';
+  // Build WebSocket URL with path-based routing
+  // Use the same host/port as Meteor (proxied to terminal server internally)
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.hostname;
+  const port = window.location.port || (protocol === 'wss:' ? '443' : '80');
+  let wsUrl = `${protocol}//${host}:${port}`;
   
   if (containerName) {
     wsUrl += `/socket/name/${encodeURIComponent(containerName)}?method=${method}`;
