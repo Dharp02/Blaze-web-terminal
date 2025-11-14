@@ -127,6 +127,30 @@ Meteor.methods({
         }
    },
 
+   startContainer: async function(containerId) {
+        try {
+            console.log(` Starting container: ${containerId}`);
+            const container = docker.getContainer(containerId);
+            await container.start();
+            console.log(` Container ${containerId} started successfully`);
+            
+            // Get updated container info
+            const containerInfo = await container.inspect();
+            const sshPort = containerInfo.NetworkSettings.Ports['22/tcp'] 
+                ? containerInfo.NetworkSettings.Ports['22/tcp'][0].HostPort 
+                : null;
+            
+            return {
+                success: true,
+                message: 'Container started successfully',
+                sshPort: sshPort
+            };
+        } catch(error) {
+            console.error(' Error starting container:', error);
+            throw new Meteor.Error('start-container-failed', error.message);
+        }
+    },
+
    stopContainer: async function(containerId) {
         try {
         console.log(` Closing container: ${containerId}`);

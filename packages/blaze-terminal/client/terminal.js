@@ -213,11 +213,13 @@ function connectWebSocket(containerName = null, containerId = null, method = 'do
     return;
   }
   
+  console.log('Initiating WebSocket connection to:', wsUrl);
+  
   try {
     websocket = new WebSocket(wsUrl);
     
     websocket.onopen = () => {
-      console.log('WebSocket connected');
+      console.log('WebSocket connection established successfully to:', wsUrl);
       isConnecting = false;
       reconnectAttempts = 0;
       connectionStatus.set('connected');

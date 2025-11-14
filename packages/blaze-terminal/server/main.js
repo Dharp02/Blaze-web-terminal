@@ -88,8 +88,14 @@ class SimpleTerminalServer {
       const parsedUrl = url.parse(request.url, true);
       const pathname = parsedUrl.pathname;
       const query = parsedUrl.query;
+      const clientIP = request.socket.remoteAddress;
 
-      console.log('WebSocket upgrade request:', pathname, query);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📥 Incoming WebSocket Connection Request');
+      console.log('  Path:', pathname);
+      console.log('  Query:', query);
+      console.log('  Client IP:', clientIP);
+      console.log('  Time:', new Date().toISOString());
 
       // Parse path: /socket/name/container-name or /socket/id/container-id
       const pathMatch = pathname.match(/^\/socket\/(name|id)\/(.+)$/);
@@ -115,7 +121,10 @@ class SimpleTerminalServer {
           return;
         }
 
-        console.log('Upgrading connection for container:', containerInfo.name, 'method:', method);
+        console.log('✅ Container validated:', containerInfo.name, '(' + containerInfo.state + ')');
+        console.log('  Container ID:', containerInfo.id);
+        console.log('  Method:', method);
+        console.log('  Upgrading WebSocket connection...');
 
         // Perform WebSocket upgrade
         this.wss.handleUpgrade(request, socket, head, (ws) => {
@@ -143,7 +152,14 @@ class SimpleTerminalServer {
         return;
       }
 
-      console.log('Client connected:', clientId, '→', ws.containerInfo.name, '(' + ws.connectionMethod + ')');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('🔌 WebSocket Connection Established');
+      console.log('  Client ID:', clientId);
+      console.log('  Container:', ws.containerInfo.name);
+      console.log('  Container ID:', ws.containerInfo.id);
+      console.log('  Method:', ws.connectionMethod);
+      console.log('  State:', ws.containerInfo.state);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       // Send connection confirmation
       ws.send(JSON.stringify({
@@ -287,6 +303,13 @@ class SimpleTerminalServer {
     const method = ws.connectionMethod || 'docker';
     const containerInfo = ws.containerInfo;
 
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🖥️  Creating Terminal Session');
+    console.log('  Session ID:', sessionId);
+    console.log('  Client ID:', clientId);
+    console.log('  Method:', method);
+    console.log('  Size:', cols + 'x' + rows);
+
     if (method === 'docker' && containerInfo) {
       this.createDockerTerminal(ws, clientId, sessionId, containerInfo, cols, rows);
     } else if (method === 'ssh') {
@@ -303,6 +326,10 @@ class SimpleTerminalServer {
   }
 
   createDockerTerminal(ws, clientId, sessionId, containerInfo, cols, rows) {
+    console.log('  Container:', containerInfo.name);
+    console.log('  Container ID:', containerInfo.id);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     const container = this.docker.getContainer(containerInfo.id);
     const session = {
       id: sessionId,
