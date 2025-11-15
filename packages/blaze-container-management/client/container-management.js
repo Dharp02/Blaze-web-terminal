@@ -131,6 +131,16 @@ Template.containerManager.helpers({
       return allContainers.filter(container => container.isFavorite === true);
     }
     
+    if (activeTab === 'active') {
+      // Show only running containers
+      return allContainers.filter(container => container.status === 'running');
+    }
+    
+    if (activeTab === 'exited') {
+      // Show only exited containers
+      return allContainers.filter(container => container.status !== 'running');
+    }
+    
     return allContainers;
   },
   
@@ -144,6 +154,16 @@ Template.containerManager.helpers({
       return favoriteContainers.length > 0;
     }
     
+    if (activeTab === 'active') {
+      const runningContainers = allContainers.filter(container => container.status === 'running');
+      return runningContainers.length > 0;
+    }
+    
+    if (activeTab === 'exited') {
+      const exitedContainers = allContainers.filter(container => container.status !== 'running');
+      return exitedContainers.length > 0;
+    }
+    
     return allContainers.length > 0;
   },
   
@@ -151,12 +171,22 @@ Template.containerManager.helpers({
     return currentTab.get() === 'active';
   },
   
+  isExitedTab() {
+    return currentTab.get() === 'exited';
+  },
+  
   isCreating() {
     return false;
   },
   
-  containerCount() {
-    return displayedContainers.get().length;
+  runningCount() {
+    const allContainers = displayedContainers.get();
+    return allContainers.filter(container => container.status === 'running').length;
+  },
+  
+  exitedCount() {
+    const allContainers = displayedContainers.get();
+    return allContainers.filter(container => container.status !== 'running').length;
   },
   
   favoritesCount() {

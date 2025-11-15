@@ -52,8 +52,16 @@
             data-action="setActiveTab"
             data-tab="active"
           >
-            Active Containers
-            <span class="container-count">{{containerCount}}</span>
+            Running
+            <span class="container-count">{{runningCount}}</span>
+          </button>
+          <button 
+            class="tab-button {{#if isExitedTab}}active{{/if}}"
+            data-action="setActiveTab"
+            data-tab="exited"
+          >
+            Exited 
+            <span class="container-count">{{exitedCount}}</span>
           </button>
           <button 
             class="tab-button {{#if isFavoritesTab}}active{{/if}}"
