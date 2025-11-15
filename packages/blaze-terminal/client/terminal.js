@@ -61,54 +61,8 @@ function loadSavedConnections() {
   }
 }
 
-function saveActiveSessions() {
-  const currentTerminals = terminals.get();
-  const activeSessions = currentTerminals.map(terminal => ({
-    id: terminal.id,
-    title: terminal.title,
-    status: terminal.status,
-    isActive: terminal.isActive,
-    savedAt: new Date().toISOString()
-  }));
-  
-  localStorage.setItem('activeTerminalSessions', JSON.stringify(activeSessions));
-  console.log('Saved', activeSessions.length, 'active sessions to localStorage');
-}
-
-function restoreActiveSessions() {
-  try {
-    const saved = localStorage.getItem('activeTerminalSessions');
-    if (!saved) {
-      console.log('No saved sessions found');
-      return null;
-    }
-    
-    const sessions = JSON.parse(saved);
-    console.log('Found', sessions.length, 'saved sessions, attempting to restore...');
-    
-    // Set the restored sessions with connecting status
-    const restoredSessions = sessions.map(session => ({
-      ...session,
-      status: 'connecting' // Set to connecting while we check server
-    }));
-    
-    terminals.set(restoredSessions);
-    
-    // Set active terminal
-    const activeSession = sessions.find(s => s.isActive);
-    if (activeSession) {
-      activeTerminalId.set(activeSession.id);
-    } else if (sessions.length > 0) {
-      activeTerminalId.set(sessions[0].id);
-    }
-    
-    return sessions;
-  } catch (error) {
-    console.error('Error restoring sessions:', error);
-    localStorage.removeItem('activeTerminalSessions');
-    return null;
-  }
-}
+// Session state is now managed entirely server-side
+// No more localStorage for active sessions
 
 function saveConnection(connectionData, name) {
   try {
@@ -288,6 +242,41 @@ function showWebSocketError(message) {
 // MESSAGE HANDLERS
 // ===========================================
 
+function handleExistingSessions(data) {
+  const { sessions } = data;
+  console.log('Received', sessions.length, 'existing sessions from server');
+  
+  if (!sessions || sessions.length === 0) {
+    console.log('No existing sessions to restore');
+    return;
+  }
+  
+  // Set the restored sessions with connecting status
+  const restoredSessions = sessions.map(session => ({
+    id: session.sessionId,
+    title: session.title,
+    status: 'connecting',
+    isActive: false
+  }));
+  
+  terminals.set(restoredSessions);
+  
+  // Set the first session as active
+  if (restoredSessions.length > 0) {
+    activeTerminalId.set(restoredSessions[0].id);
+  }
+  
+  // Request reconnection to each session
+  console.log('Requesting reconnection to', sessions.length, 'sessions...');
+  sessions.forEach(session => {
+    console.log('Reconnecting to:', session.title, '(' + session.sessionId + ')');
+    websocket.send(JSON.stringify({
+      type: 'reconnect_session',
+      sessionId: session.sessionId
+    }));
+  });
+}
+
 function handleWebSocketMessage(data) {
   switch (data.type) {
     case 'connected':
@@ -356,8 +345,7 @@ function handleSessionReconnected(data) {
     reconnected: true 
   });
   
-  // Save the updated session state
-  saveActiveSessions();
+  // Session state is managed server-side - no need to save locally
 }
 
 function handleSessionNotFound(data) {
@@ -378,8 +366,7 @@ function handleSessionNotFound(data) {
     setActiveTerminal(filteredTerminals[0].id);
   }
   
-  // Save updated sessions
-  saveActiveSessions();
+  // Session state is managed server-side - no need to save locally
 }
 
 function handleTerminalCreated(data) {
@@ -418,8 +405,7 @@ function handleTerminalCreated(data) {
   }
   
   updateTerminalStatus(sessionId, 'connected');
-  // Save sessions after successful creation
-  saveActiveSessions();
+  // Session state is managed server-side - no need to save locally
 }
 
 function handleTerminalOutput(data) {
@@ -518,8 +504,7 @@ function createTerminalWithSSH(sshConfig) {
     sshConfig: sshConfig
   }));
   
-  // Save sessions immediately (will be updated when connection succeeds)
-  saveActiveSessions();
+  // Session state is managed server-side - no need to save locally
 }
 
 // ===========================================
@@ -726,12 +711,6 @@ function setActiveTerminal(terminalId) {
 function closeTerminal(terminalId) {
   const currentTerminals = terminals.get();
   
-  if (currentTerminals.length === 1) {
-    // If it's the last terminal, clear saved sessions
-    localStorage.removeItem('activeTerminalSessions');
-    console.log('Cleared saved sessions (last terminal closed)');
-  }
-  
   const filteredTerminals = currentTerminals.filter(t => t.id !== terminalId);
   
   if (websocket && websocket.readyState === WebSocket.OPEN) {
@@ -754,10 +733,7 @@ function closeTerminal(terminalId) {
     setActiveTerminal(filteredTerminals[0].id);
   }
   
-  // Save sessions after closing
-  if (filteredTerminals.length > 0) {
-    saveActiveSessions();
-  }
+  // Session state is managed server-side - no need to save locally
 }
 
 function updateTerminalStatus(terminalId, status) {
@@ -1103,34 +1079,26 @@ Template.terminal.events({
 Template.terminal.onCreated(function() {
   console.log('Terminal component created');
   
-  // First, try to restore saved sessions
-  const restoredSessions = restoreActiveSessions();
-  
   // Connect to WebSocket
   connectWebSocket();
   loadSavedConnections();
-
   
+  // Request existing sessions from server after WebSocket connects
+  const checkWebSocket = () => {
+    if (websocket && websocket.readyState === WebSocket.OPEN) {
+      console.log('WebSocket ready, requesting active sessions from server...');
+      
+      // Request list of active sessions from server
+      websocket.send(JSON.stringify({
+        type: 'list_sessions'
+      }));
+    } else {
+      setTimeout(checkWebSocket, 500);
+    }
+  };
   
-  // If we have restored sessions, try to reconnect after WebSocket is ready
-  if (restoredSessions && restoredSessions.length > 0) {
-    console.log('Will attempt to reconnect to', restoredSessions.length, 'saved sessions');
-    
-    // Wait for WebSocket to be ready, then request reconnections
-    const checkWebSocket = () => {
-      if (websocket && websocket.readyState === WebSocket.OPEN) {
-        console.log('WebSocket ready, requesting reconnections...');
-        requestSessionReconnection(restoredSessions);
-      } else {
-        setTimeout(checkWebSocket, 500);
-      }
-    };
-    
-    // Start checking after a brief delay
-    setTimeout(checkWebSocket, 100);
-  } else {
-    console.log('No saved sessions to restore');
-  }
+  // Start checking after a brief delay
+  setTimeout(checkWebSocket, 100);
 });
 
 Template.terminal.onRendered(function() {
@@ -1259,11 +1227,7 @@ window.fixTerminalFocus = function() {
   });
 };
 
-// Manual clear function for debugging
-window.clearSavedSessions = function() {
-  localStorage.removeItem('activeTerminalSessions');
-  console.log('Manually cleared all saved terminal sessions');
-};
+// Manual clear function removed - sessions are managed server-side now
 
 // ===========================================
 // PUBLIC API
@@ -1388,8 +1352,7 @@ window.TerminalAPI = {
         
         websocket.send(JSON.stringify(message));
         
-        // Save sessions
-        saveActiveSessions();
+        // Session state is managed server-side - no need to save locally
       }
     }, 100);
     

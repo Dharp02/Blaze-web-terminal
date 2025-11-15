@@ -13,6 +13,10 @@ class SimpleTerminalServer {
     this.sessions = new Map();
     this.clients = new Map();
     
+    // Map to track which clients are subscribed to which sessions
+    // sessionId -> Set of clientIds
+    this.sessionSubscribers = new Map();
+    
     // Initialize Docker with proper socket path for macOS
     const dockerSocketPath = process.platform === 'darwin' 
       ? `${os.homedir()}/.docker/run/docker.sock`
@@ -203,17 +207,27 @@ class SimpleTerminalServer {
 
   /*
    * Mark sessions as disconnected but keep SSH alive
+   * Now handles multiple subscribers per session
    */
   markClientSessionsAsDisconnected(clientId) {
-    for (const [sessionId, session] of this.sessions.entries()) {
-      if (session.clientId === clientId) {
-        console.log('Marking session', sessionId, 'as disconnected (keeping SSH alive)');
-        session.ws = null;
-        session.clientId = null;
-        session.disconnectedAt = new Date();
-        // Keep isConnected as true since SSH is still active
+    // Remove this client from all session subscriber lists
+    this.sessionSubscribers.forEach((subscribers, sessionId) => {
+      if (subscribers.has(clientId)) {
+        console.log('Removing client', clientId, 'from session', sessionId);
+        subscribers.delete(clientId);
+        
+        // If this was the last subscriber, mark session for potential cleanup
+        if (subscribers.size === 0) {
+          const session = this.sessions.get(sessionId);
+          if (session) {
+            console.log('No more subscribers for session', sessionId, '- marking as disconnected');
+            session.disconnectedAt = new Date();
+          }
+        } else {
+          console.log('Session', sessionId, 'still has', subscribers.size, 'subscriber(s)');
+        }
       }
-    }
+    });
   }
 
   /**
@@ -247,6 +261,9 @@ class SimpleTerminalServer {
       case 'create_terminal':
         this.createTerminal(ws, clientId, message);
         break;
+      case 'list_sessions':
+        this.listSessions(ws, clientId);
+        break;
       case 'reconnect_session':
         this.reconnectSession(ws, clientId, message.sessionId);
         break;
@@ -262,6 +279,37 @@ class SimpleTerminalServer {
     }
   }
 
+  /**
+   * List all active sessions
+   */
+  listSessions(ws, clientId) {
+    console.log('Listing active sessions for client:', clientId);
+    
+    const activeSessions = [];
+    for (const [sessionId, session] of this.sessions.entries()) {
+      if (session.isConnected) {
+        activeSessions.push({
+          sessionId: sessionId,
+          title: session.name || 'Terminal ' + sessionId.substr(0, 8),
+          method: session.method || 'ssh',
+          host: session.host,
+          username: session.username,
+          containerName: session.containerName,
+          cols: session.cols,
+          rows: session.rows,
+          createdAt: session.createdAt
+        });
+      }
+    }
+    
+    console.log('Found', activeSessions.length, 'active sessions');
+    
+    ws.send(JSON.stringify({
+      type: 'existing_sessions',
+      sessions: activeSessions
+    }));
+  }
+
   reconnectSession(ws, clientId, sessionId) {
     const session = this.sessions.get(sessionId);
     
@@ -274,9 +322,17 @@ class SimpleTerminalServer {
       return;
     }
     
-    session.ws = ws;
-    session.clientId = clientId;
+    // Subscribe this client to the session
+    if (!this.sessionSubscribers.has(sessionId)) {
+      this.sessionSubscribers.set(sessionId, new Set());
+    }
+    this.sessionSubscribers.get(sessionId).add(clientId);
+    
+    // Clear disconnection timestamp since we have active subscribers
     session.disconnectedAt = null;
+    
+    console.log('Client', clientId, 'subscribed to session', sessionId, 
+                '(Total subscribers:', this.sessionSubscribers.get(sessionId).size + ')');
     
     ws.send(JSON.stringify({
       type: 'session_reconnected',
@@ -290,9 +346,15 @@ class SimpleTerminalServer {
       rows: session.rows
     }));
     
-    if (session.stream && session.isConnected) {
+    // Send any buffered output to the newly connected client
+    const bufferedOutput = this.sessionScreens.get(sessionId);
+    if (bufferedOutput && session.isConnected) {
       setTimeout(() => {
-        session.stream.write('\x0C');
+        ws.send(JSON.stringify({
+          type: 'terminal_output',
+          sessionId: sessionId,
+          data: bufferedOutput
+        }));
       }, 200);
     }
   }
@@ -333,12 +395,10 @@ class SimpleTerminalServer {
     const container = this.docker.getContainer(containerInfo.id);
     const session = {
       id: sessionId,
-      clientId: clientId,
       method: 'docker',
       container: container,
       exec: null,
       stream: null,
-      ws: ws,
       cols: cols,
       rows: rows,
       isConnected: false,
@@ -352,6 +412,13 @@ class SimpleTerminalServer {
     };
 
     this.sessions.set(sessionId, session);
+    
+    // Subscribe this client to the session
+    if (!this.sessionSubscribers.has(sessionId)) {
+      this.sessionSubscribers.set(sessionId, new Set());
+    }
+    this.sessionSubscribers.get(sessionId).add(clientId);
+    console.log('Client', clientId, 'subscribed to new session', sessionId);
 
     // Create exec instance
     container.exec({
@@ -451,11 +518,9 @@ class SimpleTerminalServer {
     const ssh = new Client();
     const session = {
       id: sessionId,
-      clientId: clientId,
       method: 'ssh',
       ssh: ssh,
       stream: null,
-      ws: ws,
       cols: cols,
       rows: rows,
       isConnected: false,
@@ -470,6 +535,13 @@ class SimpleTerminalServer {
     };
 
     this.sessions.set(sessionId, session);
+    
+    // Subscribe this client to the session
+    if (!this.sessionSubscribers.has(sessionId)) {
+      this.sessionSubscribers.set(sessionId, new Set());
+    }
+    this.sessionSubscribers.get(sessionId).add(clientId);
+    console.log('Client', clientId, 'subscribed to new session', sessionId);
 
     // SSH connection timeout
     const timeout = setTimeout(() => {
@@ -586,14 +658,36 @@ class SimpleTerminalServer {
   }
 
   /**
-   * Send message to session if WebSocket is available
+   * Send message to all clients subscribed to a session
+   * This enables synchronized terminal output across multiple windows
    */
   sendToSession(sessionId, message) {
-    const session = this.sessions.get(sessionId);
-    if (session && session.ws && session.ws.readyState === WebSocket.OPEN) {
-      session.ws.send(JSON.stringify(message));
-    } else {
-      console.log('Cannot send message to session', sessionId, '- no active WebSocket');
+    const subscribers = this.sessionSubscribers.get(sessionId);
+    
+    if (!subscribers || subscribers.size === 0) {
+      console.log('No subscribers for session', sessionId);
+      return;
+    }
+    
+    const messageStr = JSON.stringify(message);
+    let sentCount = 0;
+    
+    subscribers.forEach(clientId => {
+      const ws = this.clients.get(clientId);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(messageStr);
+        sentCount++;
+      } else {
+        // Client no longer connected, will be cleaned up on next disconnect event
+        console.log('Client', clientId, 'websocket not available');
+      }
+    });
+    
+    if (sentCount > 0 && message.type === 'terminal_output') {
+      // Only log output broadcasts occasionally to avoid spam
+      if (Math.random() < 0.01) { // 1% sample
+        console.log('Broadcasted output to', sentCount, 'subscriber(s) for session', sessionId);
+      }
     }
   }
 
@@ -680,7 +774,8 @@ class SimpleTerminalServer {
     }
 
     this.sessions.delete(sessionId);
-    this.sessionScreens.delete(sessionId); //  Clean up stored content
+    this.sessionScreens.delete(sessionId);
+    this.sessionSubscribers.delete(sessionId); // Remove all subscribers
     console.log('Session cleaned up:', sessionId);
   }
 
@@ -717,16 +812,21 @@ class SimpleTerminalServer {
     const total = this.sessions.size;
     let connected = 0;
     let disconnected = 0;
+    let totalSubscribers = 0;
     
-    for (const session of this.sessions.values()) {
-      if (session.ws) {
+    this.sessions.forEach((session, sessionId) => {
+      const subscribers = this.sessionSubscribers.get(sessionId);
+      const subscriberCount = subscribers ? subscribers.size : 0;
+      
+      if (subscriberCount > 0) {
         connected++;
+        totalSubscribers += subscriberCount;
       } else {
         disconnected++;
       }
-    }
+    });
     
-    return { total, connected, disconnected };
+    return { total, connected, disconnected, totalSubscribers };
   }
 }
 
@@ -738,6 +838,7 @@ server.start();
 setInterval(() => {
   const stats = server.getSessionStats();
   if (stats.total > 0) {
-    console.log('Sessions:', stats.total, 'total (' + stats.connected, 'connected,', stats.disconnected, 'disconnected)');
+    console.log('📊 Sessions:', stats.total, 'total (' + stats.connected, 'with subscribers,', 
+                stats.disconnected, 'idle) -', stats.totalSubscribers, 'total subscriber(s)');
   }
 }, 60000); // Every minute
