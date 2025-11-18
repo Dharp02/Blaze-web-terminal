@@ -8,9 +8,12 @@ import './container-management.css'
 // ===========================================
 
 const displayedContainers = new ReactiveVar([]);
-const hasContainers = new ReactiveVar(false);
 const currentTab = new ReactiveVar('active');
 const favoriteFilter = new ReactiveVar(false);
+
+// NEW: Modal state
+const showConnectionMethodModal = new ReactiveVar(false);
+const selectedContainer = new ReactiveVar(null);
 
 // ===========================================
 // UTILITY FUNCTIONS
@@ -18,29 +21,6 @@ const favoriteFilter = new ReactiveVar(false);
 
 function isTerminalPackageAvailable() {
   return typeof window.TerminalAPI !== 'undefined' && window.TerminalAPI.isAvailable();
-}
-
-function createConnectionData(container) {
-  return {
-    host: 'localhost',
-    port: parseInt(container.publicPort),
-    username: 'root',
-    password: 'changeme' // Default container password
-  };
-}
-
-function showContainerConnectionModal(container) {
-  const connectionInfo = `
-    Container: ${container.name}
-    Host: localhost
-    Port: ${container.publicPort}
-    Username: root
-    Password: changeme
-
-    Use these details in your SSH client.
-      `;
-  
-  alert(connectionInfo);
 }
 
 // ===========================================
@@ -63,15 +43,11 @@ function syncFavoritesWithContainers(containers) {
   const currentFavorites = loadFavorites();
   const existingContainerIds = containers.map(c => c.id);
   
-  // Filter out favorites for containers that no longer exist
   const validFavorites = currentFavorites.filter(id => existingContainerIds.includes(id));
   
-  // Update localStorage if favorites were cleaned up
   if (validFavorites.length !== currentFavorites.length) {
     localStorage.setItem('containerFavorites', JSON.stringify(validFavorites));
-    console.log(' Cleaned up favorites. Before:', currentFavorites.length, 'After:', validFavorites.length);
-    
-    // Force reactive update
+    console.log('🧹 Cleaned up favorites:', currentFavorites.length, '→', validFavorites.length);
     favoriteFilter.set(!favoriteFilter.get());
   }
   
@@ -85,24 +61,20 @@ function syncFavoritesWithContainers(containers) {
 function loadContainers() {
   Meteor.call('listContainers', function(err, containers) {
     if (err) {
-      console.error('Error loading containers:', err);
+      console.error('❌ Error loading containers:', err);
       return;
     }
     
-    // STEP 1: Sync favorites with actual containers (removes deleted ones)
     const validFavoriteIds = syncFavoritesWithContainers(containers);
     
-    // STEP 2: Apply favorite status to containers
     const containersWithFavorites = containers.map(container => ({
       ...container,
       isFavorite: validFavoriteIds.includes(container.id)
     }));
     
-    // STEP 3: Update reactive variables
     displayedContainers.set(containersWithFavorites);
-    hasContainers.set(containersWithFavorites.length > 0);
     
-    console.log(' Loaded', containers.length, 'containers with', validFavoriteIds.length, 'favorites');
+    console.log('📦 Loaded', containers.length, 'containers,', validFavoriteIds.length, 'favorites');
   });
 }
 
@@ -110,10 +82,9 @@ function loadContainers() {
 // TEMPLATE LIFECYCLE
 // ===========================================
 
-Template.containerManager.onCreated(async function() {
-
-   loadContainers();
-
+Template.containerManager.onCreated(function() {
+  console.log('📦 Container manager created');
+  loadContainers();
 });
 
 // ===========================================
@@ -122,16 +93,20 @@ Template.containerManager.onCreated(async function() {
 
 Template.containerManager.helpers({
   displayedContainers() {
-     const allContainers = displayedContainers.get();
-     const activeTab = currentTab.get();
-     favoriteFilter.get();
+    const allContainers = displayedContainers.get();
+    const activeTab = currentTab.get();
+    favoriteFilter.get();
     
-    if (activeTab === 'favorites') {
-      // Show only favorited containers
-      return allContainers.filter(container => container.isFavorite === true);
+    switch (activeTab) {
+      case 'active':
+        return allContainers.filter(c => c.status === 'running');
+      case 'exited':
+        return allContainers.filter(c => c.status !== 'running');
+      case 'favorites':
+        return allContainers.filter(c => c.isFavorite);
+      default:
+        return allContainers;
     }
-    
-    return allContainers;
   },
   
   hasContainers() {
@@ -139,33 +114,62 @@ Template.containerManager.helpers({
     const allContainers = displayedContainers.get();
     favoriteFilter.get();
     
-    if (activeTab === 'favorites') {
-      const favoriteContainers = allContainers.filter(container => container.isFavorite === true);
-      return favoriteContainers.length > 0;
+    switch (activeTab) {
+      case 'active':
+        return allContainers.some(c => c.status === 'running');
+      case 'exited':
+        return allContainers.some(c => c.status !== 'running');
+      case 'favorites':
+        return allContainers.some(c => c.isFavorite);
+      default:
+        return allContainers.length > 0;
     }
-    
-    return allContainers.length > 0;
   },
   
   isActiveTab() {
     return currentTab.get() === 'active';
   },
   
-  isCreating() {
-    return false;
-  },
-  
-  containerCount() {
-    return displayedContainers.get().length;
-  },
-  
-  favoritesCount() {
-    favoriteFilter.get();
-    return displayedContainers.get().filter(container => container.isFavorite).length;
+  isExitedTab() {
+    return currentTab.get() === 'exited';
   },
   
   isFavoritesTab() {
     return currentTab.get() === 'favorites';
+  },
+  
+  isCreating() {
+    return false;
+  },
+  
+  runningCount() {
+    return displayedContainers.get().filter(c => c.status === 'running').length;
+  },
+  
+  exitedCount() {
+    return displayedContainers.get().filter(c => c.status !== 'running').length;
+  },
+  
+  favoritesCount() {
+    favoriteFilter.get();
+    return displayedContainers.get().filter(c => c.isFavorite).length;
+  },
+  
+  isRunning() {
+    return this.status === 'running';
+  },
+  
+  isStopped() {
+    return this.status !== 'running';
+  },
+  
+  // NEW: Modal helpers
+  showConnectionMethodModal() {
+    return showConnectionMethodModal.get();
+  },
+  
+  selectedContainer() {
+    return selectedContainer.get();
   }
 });
 
@@ -174,231 +178,309 @@ Template.containerManager.helpers({
 // ===========================================
 
 Template.containerManager.events({
-  "click .create-container-btn": function(event, template){
-    // Prevent multiple clicks
+  "click .create-container-btn": function(event, template) {
     if (template.$(event.currentTarget).hasClass('disabled')) {
       return;
     }
     
-    // Set creating state
-    template.$('.create-container-btn').addClass('disabled');
+    const btn = template.$('.create-container-btn');
+    btn.addClass('disabled');
     
-    Meteor.call("createContainer", function(err, res){
-      // Remove creating state
-      template.$('.create-container-btn').removeClass('disabled');
+    Meteor.call("createContainer", function(err, result) {
+      btn.removeClass('disabled');
       
       if (err) {
-        console.error('Error creating container:', err);
+        console.error('❌ Error creating container:', err);
         alert('Failed to create container: ' + err.reason);
         return;
       }
       
-      console.log('Container created successfully:', res);
-      
-      // Refresh the container list to show all containers
+      console.log('✅ Container created:', result.containerName);
       loadContainers();
     });
   },
 
+  // UPDATED: Connect button - now shows modal instead of confirm()
   "click .connect-btn": function(event, template) {
     event.preventDefault();
     
-    const container = this; // Container data from template context
+    const container = this;
     
-    console.log(' Connect button clicked for:', container.name);
-    
-    // Check if terminal package is available
-    if (isTerminalPackageAvailable()) {
-      console.log(' Terminal package detected - using direct integration');
-      
-      // Create SSH config for container
-      const sshConfig = createConnectionData(container);
-      
-      console.log(' Connecting to container:', sshConfig);
-      
-      // Use terminal package directly
-      const success = window.TerminalAPI.createDirectConnection(sshConfig);
-      
-      if (success) {
-        console.log(' Direct connection successful');
-        
-        // Optional: Show success feedback
-        const btn = $(event.currentTarget);
-        const originalText = btn.text();
-        btn.text('Connected!').css('background', '#4caf50');
-        
-        setTimeout(() => {
-          btn.text(originalText).css('background', '');
-        }, 2000);
-        
-      } else {
-        console.error(' Direct connection failed');
-        alert('Failed to connect to container. Please try again.');
-      }
-      
-    } else {
-      console.log(' Terminal package not available - using fallback modal');
-      
-      //  Show original connection modal 
-      showContainerConnectionModal(container);
-    }
-  },
-
-  "click .stop-btn ": function(event, template){
-    const containerId = event.currentTarget.getAttribute('data-container-id');
-    const containerName = event.currentTarget.getAttribute('data-container-name');
-    
-    // Confirm before deleting
-    if (!confirm(`Are you sure you want to close and delete container "${containerName}"?\n\nThis action cannot be undone.`)) {
+    if (!isTerminalPackageAvailable()) {
+      alert('⚠️ Terminal package not available');
       return;
     }
     
-    // Disable the button during deletion
-    const btn = $(event.currentTarget);
-    btn.prop('disabled', true).text('Closing...');
+    if (container.status !== 'running') {
+      alert('⚠️ Container must be running to connect. Please start it first.');
+      return;
+    }
+    
+    // Show the connection method modal
+    selectedContainer.set(container);
+    showConnectionMethodModal.set(true);
+  },
 
-    Meteor.call('stopContainer', containerId, function(err, result) {
-      // Re-enable button
-      btn.prop('disabled', false).text('×');
-      
-      if (err) {
-        console.error('Error closing container:', err);
-        alert('Failed to close container: ' + err.reason);
+  // NEW: Close connection method modal
+  "click [data-action='closeConnectionMethodModal']": function(event, template) {
+    event.preventDefault();
+    showConnectionMethodModal.set(false);
+    selectedContainer.set(null);
+  },
+
+  // NEW: Select connection method from modal
+  "click [data-action='selectConnectionMethod']": function(event, template) {
+    event.preventDefault();
+    
+    const method = event.currentTarget.getAttribute('data-method');
+    const container = selectedContainer.get();
+    
+    if (!container) return;
+    
+    // Close modal
+    showConnectionMethodModal.set(false);
+    
+    console.log(`🔌 Connecting via ${method.toUpperCase()} to ${container.name}`);
+    
+    const connectionOptions = {
+      containerName: container.name,
+      method: method
+    };
+    
+    if (method === 'ssh') {
+      if (container.publicPort === 'N/A') {
+        alert('⚠️ SSH port not available for this container');
+        selectedContainer.set(null);
         return;
       }
       
-      console.log('Container closed successfully:', result);
+      connectionOptions.sshConfig = {
+        host: 'localhost',
+        port: parseInt(container.publicPort),
+        username: 'root',
+        password: 'changeme'
+      };
+    }
+    
+    const success = window.TerminalAPI.createContainerConnection(connectionOptions);
+    
+    if (success) {
+      // Find the connect button for this specific container and update it
+      setTimeout(() => {
+        const btn = template.$(`[data-container-name="${container.name}"] .connect-btn`);
+        if (btn.length) {
+          const originalText = btn.text();
+          btn.text('✅ Connected!').css('background', '#4caf50');
+          
+          setTimeout(() => {
+            btn.text(originalText).css('background', '');
+          }, 2000);
+        }
+      }, 100);
+    } else {
+      alert('❌ Failed to connect. Please try again.');
+    }
+    
+    selectedContainer.set(null);
+  },
+
+  // Close modal when clicking overlay
+  "click .modal-overlay": function(event, template) {
+    if (event.target === event.currentTarget) {
+      showConnectionMethodModal.set(false);
+      selectedContainer.set(null);
+    }
+  },
+
+  // Start container button
+  "click .start-btn": function(event, template) {
+    event.preventDefault();
+    
+    const containerId = event.currentTarget.getAttribute('data-container-id');
+    const containerName = event.currentTarget.getAttribute('data-container-name');
+    
+    const btn = $(event.currentTarget);
+    btn.prop('disabled', true).text('Starting...');
+
+    Meteor.call('startContainer', containerId, function(err, result) {
+      btn.prop('disabled', false).text('▶');
+      
+      if (err) {
+        console.error('❌ Error starting container:', err);
+        alert('Failed to start container: ' + err.reason);
+        return;
+      }
+      
+      console.log('✅ Container started:', containerName);
+      loadContainers();
+      
+      alert(`✅ Container "${containerName}" started successfully!`);
+    });
+  },
+
+  // Stop container button
+  "click .stop-btn": function(event, template) {
+    event.preventDefault();
+    
+    const containerId = event.currentTarget.getAttribute('data-container-id');
+    const containerName = event.currentTarget.getAttribute('data-container-name');
+    
+    if (!confirm(`Stop container "${containerName}"?\n\nContainer will be stopped but not deleted.`)) {
+      return;
+    }
+    
+    const btn = $(event.currentTarget);
+    btn.prop('disabled', true).text('Stopping...');
+
+    Meteor.call('stopContainerOnly', containerId, function(err, result) {
+      btn.prop('disabled', false).text('■');
+      
+      if (err) {
+        console.error('❌ Error stopping container:', err);
+        alert('Failed to stop container: ' + err.reason);
+        return;
+      }
+      
+      console.log('✅ Container stopped:', containerName);
+      loadContainers();
+      
+      alert(`✅ Container "${containerName}" stopped successfully!`);
+    });
+  },
+
+  // Delete container button
+  "click .delete-btn": function(event, template) {
+    event.preventDefault();
+    
+    const containerId = event.currentTarget.getAttribute('data-container-id');
+    const containerName = event.currentTarget.getAttribute('data-container-name');
+    
+    if (!confirm(`Delete container "${containerName}"?\n\nThis action cannot be undone.`)) {
+      return;
+    }
+    
+    const btn = $(event.currentTarget);
+    btn.prop('disabled', true).text('Deleting...');
+
+    Meteor.call('stopContainer', containerId, function(err, result) {
+      btn.prop('disabled', false).text('×');
+      
+      if (err) {
+        console.error('❌ Error deleting container:', err);
+        alert('Failed to delete container: ' + err.reason);
+        return;
+      }
+      
+      console.log('✅ Container deleted:', containerName);
 
       const currentFavorites = loadFavorites();
       const updatedFavorites = currentFavorites.filter(id => id !== containerId);
       localStorage.setItem('containerFavorites', JSON.stringify(updatedFavorites));
       
-      // Remove container from the display list
       const currentContainers = displayedContainers.get();
-      const updatedContainers = currentContainers.filter(container => container.id !== containerId);
+      const updatedContainers = currentContainers.filter(c => c.id !== containerId);
       displayedContainers.set(updatedContainers);
-      hasContainers.set(updatedContainers.length > 0);
-
-      // Trigger favorites reactive update
+      
       favoriteFilter.set(!favoriteFilter.get());
       
-      // Show success message
-      alert(` Container "${containerName}" has been closed and deleted successfully!`);
+      alert(`✅ Container "${containerName}" deleted successfully!`);
     });
   },
 
-  "click .favorite-btn" : function(event,template){
+  "click .favorite-btn": function(event, template) {
     const containerId = event.currentTarget.getAttribute('data-container-id');
     const btn = $(event.currentTarget);
-    const currentFavoriteState = btn.data('favorited') === true;
+    const currentFavoriteState = btn.hasClass('favorited');
     const newFavoriteState = !currentFavoriteState;
-    // Disable button during operation
-    if (newFavoriteState) {
-    btn.addClass('favorited').attr('title', 'Remove from favorites').data('favorited', true);
-  } else {
-    btn.removeClass('favorited').attr('title', 'Add to favorites').data('favorited', false);
-  }
     
-      
-      // Update the container in the display list
-      const currentContainers = displayedContainers.get();
-      const updatedContainers = currentContainers.map(container => {
-        if (container.id === containerId) {
-          return {
-            ...container,
-            isFavorite: newFavoriteState
-          };
-        }
-        
-        return container;
-      });
-      
-      displayedContainers.set(updatedContainers);
-      saveFavorites(updatedContainers);
-      favoriteFilter.set(!favoriteFilter.get());
-      // Show feedback
-      const message = newFavoriteState ? 'Added to favorites ' : 'Removed from favorites';
-      console.log(message);
+    if (newFavoriteState) {
+      btn.addClass('favorited').attr('title', 'Remove from favorites');
+    } else {
+      btn.removeClass('favorited').attr('title', 'Add to favorites');
+    }
+    
+    const currentContainers = displayedContainers.get();
+    const updatedContainers = currentContainers.map(container => {
+      if (container.id === containerId) {
+        return { ...container, isFavorite: newFavoriteState };
+      }
+      return container;
+    });
+    
+    displayedContainers.set(updatedContainers);
+    saveFavorites(updatedContainers);
+    favoriteFilter.set(!favoriteFilter.get());
+    
+    console.log(newFavoriteState ? '⭐ Added to favorites' : '☆ Removed from favorites');
   },
 
   "click .tab-button": function(event, template) {
     const tab = event.currentTarget.getAttribute('data-tab');
     currentTab.set(tab);
-    
-    console.log(`Switched to ${tab} tab`);
+    console.log('📑 Switched to tab:', tab);
   },
 
   "click .clickable-port[data-action='copyPort']": function(event, template) {
-   const port = event.currentTarget.getAttribute('data-port');
-  
-   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(port).then(() => {
-      // Just log to console instead of fancy notification
-      console.log(` Port ${port} copied to clipboard!`);
-      
-      // Simple visual feedback on the element itself
-      const element = $(event.currentTarget);
-      const originalContent = element.html();
-      element.html(`${port} `);
-      
-      setTimeout(() => {
-        element.html(originalContent);
-      }, 1500);
-      
-    }).catch((err) => {
-      console.error('Failed to copy port:', err);
-    });
+    const port = event.currentTarget.getAttribute('data-port');
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(port).then(() => {
+        console.log('📋 Port copied:', port);
+        
+        const element = $(event.currentTarget);
+        const originalContent = element.html();
+        element.html(`${port} ✓`);
+        
+        setTimeout(() => {
+          element.html(originalContent);
+        }, 1500);
+        
+      }).catch((err) => {
+        console.error('❌ Failed to copy port:', err);
+      });
     }
   },
 
   "click .import-dockerfile-icon-btn[data-action='importDockerfile']": function(event, template) {
-    // Trigger the hidden file input
     template.$('#dockerfile-upload').click();
   },
 
   "change #dockerfile-upload": function(event, template) {
     const file = event.target.files[0];
     
-    if (!file) {
-      return; // No file selected
-    }
+    if (!file) return;
 
-    console.log(` Importing Dockerfile: ${file.name}`);
+    console.log('📥 Importing Dockerfile:', file.name);
 
-    // Read the file content
     const reader = new FileReader();
     
     reader.onload = function(e) {
       const dockerfileContent = e.target.result;
-      console.log('Dockerfile content loaded');
       
-      // Call server method to build image from content
-      template.$('.import-dockerfile-icon-btn').prop('disabled', true).text('📤');
+      const btn = template.$('.import-dockerfile-icon-btn');
+      btn.prop('disabled', true).text('📤');
       
       Meteor.call('buildImageFromDockerfile', dockerfileContent, file.name, function(err, result) {
-        // Re-enable button
-        template.$('.import-dockerfile-icon-btn').prop('disabled', false).text('📥');
+        btn.prop('disabled', false).text('📥');
         
         if (err) {
-          console.error('Error building image from Dockerfile:', err);
+          console.error('❌ Error building image:', err);
           alert('Failed to import Dockerfile: ' + err.reason);
           return;
         }
         
-        console.log('Image built successfully:', result);
-        alert(` Dockerfile imported successfully!\nImage: ${result.imageName}`);
+        console.log('✅ Image built:', result.imageName);
+        alert(`✅ Dockerfile imported successfully!\nImage: ${result.imageName}`);
         
-        // Clear the file input for next use
         template.$('#dockerfile-upload').val('');
       });
     };
     
     reader.onerror = function() {
-      console.error('Error reading file');
+      console.error('❌ Error reading file');
       alert('Error reading Dockerfile. Please try again.');
     };
     
-    // Read the file as text
     reader.readAsText(file);
   }
 });

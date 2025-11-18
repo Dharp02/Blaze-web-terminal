@@ -1,48 +1,50 @@
 <template name="containerManager">
   <div class="active-containers-content">
-    <!-- Connection Modal -->
-    {{#if showConnectionModal}}
+    
+    <!-- Connection Method Modal (Compact Version) -->
+    {{#if showConnectionMethodModal}}
       <div class="modal-overlay">
-        <div class="modal-content">
+        <div class="modal-content connection-method-modal compact">
           <div class="modal-header">
-            <h3> Connect to Container</h3>
-            <button class="modal-close" data-action="closeModal">
-              ✕
-            </button>
+            <h3>🔌 Connect to {{selectedContainer.name}}</h3>
+            <button class="modal-close" data-action="closeConnectionMethodModal">×</button>
           </div>
           
           <div class="modal-body">
-            <div class="connection-details">
-              <h4>Connection Details</h4>
-              <p><strong>Container:</strong> {{selectedContainer.name}}</p>
-              <p><strong>Host:</strong> {{selectedContainer.host}}</p>
-              <p><strong>Port:</strong> {{selectedContainer.port}}</p>
-              <p><strong>Username:</strong> root</p>
+            <p class="modal-subtitle">Choose connection method:</p>
+            
+            <!-- Docker Exec Option -->
+            <div class="connection-method-option" data-action="selectConnectionMethod" data-method="docker">
+              <div class="method-icon">🐳</div>
+              <div class="method-details">
+                <h5>Docker Exec</h5>
+                <p class="method-description">Direct access • Faster</p>
+                
+              </div>
+              <div class="method-arrow">→</div>
             </div>
             
-            <div class="password-input">
-              <label for="container-password">Password *</label>
-              <input
-                id="container-password"
-                type="password"
-                placeholder="Enter container password"
-                data-field="password"
-              />
+            <!-- SSH Option -->
+            <div class="connection-method-option" data-action="selectConnectionMethod" data-method="ssh">
+              <div class="method-icon">🔑</div>
+              <div class="method-details">
+                <h5>SSH Connection</h5>
+                <p class="method-description">Port {{selectedContainer.publicPort}} • Traditional SSH</p>
+                <span class="feature-tag recommended">Recommended</span>
+              </div>
+              <div class="method-arrow">→</div>
             </div>
           </div>
           
           <div class="modal-footer">
-            <button class="modal-btn cancel-btn" data-action="closeModal">
+            <button class="modal-btn cancel-btn" data-action="closeConnectionMethodModal">
               Cancel
-            </button>
-            <button class="modal-btn connect-btn" data-action="connectToContainer">
-               Connect
             </button>
           </div>
         </div>
       </div>
     {{/if}}
-
+    
     <!-- Header Section with Tabs -->
     <div class="containers-header">
       <div class="header-title">
@@ -52,8 +54,16 @@
             data-action="setActiveTab"
             data-tab="active"
           >
-            Active Containers
-            <span class="container-count">{{containerCount}}</span>
+            Running
+            <span class="container-count">{{runningCount}}</span>
+          </button>
+          <button 
+            class="tab-button {{#if isExitedTab}}active{{/if}}"
+            data-action="setActiveTab"
+            data-tab="exited"
+          >
+            Exited
+            <span class="container-count">{{exitedCount}}</span>
           </button>
           <button 
             class="tab-button {{#if isFavoritesTab}}active{{/if}}"
@@ -83,7 +93,7 @@
           class="create-container-btn {{#if isCreating}}disabled{{/if}}"
           data-action="createContainer"
         >
-          {{#if isCreating}}Creating...{{else}}Create{{/if}}
+          {{#if isCreating}}Creating...{{else}}+ Create{{/if}}
         </button>
       </div>
     </div>
@@ -99,6 +109,7 @@
                 <span class="container-id">{{truncatedId}}</span>
               </div>
               <div class="container-actions-top">
+                <!-- Favorite Button (always visible) -->
                 <button 
                   class="favorite-btn {{#if isFavorite}}favorited{{/if}}"
                   data-action="toggleFavorite"
@@ -107,12 +118,40 @@
                 >
                   {{#if isFavorite}}★{{else}}☆{{/if}}
                 </button>
+                
+                <!-- START button (only if stopped) -->
+                {{#if isStopped}}
+                  <button
+                    class="start-btn"
+                    data-action="startContainer"
+                    data-container-id="{{id}}"
+                    data-container-name="{{name}}"
+                    title="Start container: {{name}}"
+                  >
+                    ▶
+                  </button>
+                {{/if}}
+                
+                <!-- STOP button (only if running) -->
+                {{#if isRunning}}
+                  <button
+                    class="stop-btn"
+                    data-action="stopContainer"
+                    data-container-id="{{id}}"
+                    data-container-name="{{name}}"
+                    title="Stop container: {{name}}"
+                  >
+                    ■
+                  </button>
+                {{/if}}
+                
+                <!-- DELETE button (always visible) -->
                 <button
-                  class="stop-btn"
-                  data-action="stopContainer"
+                  class="delete-btn"
+                  data-action="deleteContainer"
                   data-container-id="{{id}}"
                   data-container-name="{{name}}"
-                  title="Stop container: {{name}}"
+                  title="Delete container: {{name}}"
                 >
                   ×
                 </button>
@@ -128,48 +167,64 @@
                 <span class="info-label">Status:</span>
                 <span class="status-badge {{statusClass}}">{{status}}</span>
               </div>
-              <div class="info-row">
-                <span class="info-label">SSH Port:</span>
-                <span 
-                  class="port-value clickable-port" 
-                  data-action="copyPort"
-                  data-port="{{publicPort}}"
-                  data-container-name="{{name}}"
-                  title="Click to copy port number"
-                >
-                  {{publicPort}} 📋
-                </span>
-              </div>
+              {{#if isRunning}}
+                <div class="info-row">
+                  <span class="info-label">SSH Port:</span>
+                  <span 
+                    class="port-value clickable-port" 
+                    data-action="copyPort"
+                    data-port="{{publicPort}}"
+                    data-container-name="{{name}}"
+                    title="Click to copy port number"
+                  >
+                    {{publicPort}} 📋
+                  </span>
+                </div>
+              {{/if}}
               <div class="info-row">
                 <span class="info-label">Created:</span>
                 <span class="info-value">{{created}}</span>
               </div>
             </div>
 
-            <div class="container-actions">
-              <button 
-                class="action-btn connect-btn" 
-                data-action="connectToContainer"
-                data-container-id="{{id}}"
-                data-container-name="{{name}}"
-                data-container-port="{{publicPort}}"
-                data-container-host="localhost"
-                title="Connect to {{name}} on port {{publicPort}}"
-              >
-                 Connect
-              </button>
-            </div>
+            <!-- CONNECT button (only if running) -->
+            {{#if isRunning}}
+              <div class="container-actions">
+                <button 
+                  class="action-btn connect-btn" 
+                  data-action="connectToContainer"
+                  data-container-id="{{id}}"
+                  data-container-name="{{name}}"
+                  data-container-port="{{publicPort}}"
+                  data-container-host="localhost"
+                  title="Connect to {{name}} on port {{publicPort}}"
+                >
+                  🔌 Connect
+                </button>
+              </div>
+            {{else}}
+              <!-- Show "Start to Connect" message for stopped containers -->
+              <div class="container-actions">
+                <div class="action-message">
+                  <span class="info-text">▶ Start container to connect</span>
+                </div>
+              </div>
+            {{/if}}
           </div>
         {{/each}}
       {{else}}
         <div class="no-containers">
           <div class="no-containers-icon">📦</div>
           <h4>
-            {{#if isActiveTab}}No Active Containers{{else}}No Favorite Containers{{/if}}
+            {{#if isActiveTab}}No Running Containers{{/if}}
+            {{#if isExitedTab}}No Stopped Containers{{/if}}
+            {{#if isFavoritesTab}}No Favorite Containers{{/if}}
           </h4>
           <p>
             {{#if isActiveTab}}
               Click "Create" to start a new SSH container or import a Dockerfile
+            {{else if isExitedTab}}
+              All stopped containers will appear here
             {{else}}
               Star containers to add them to your favorites
             {{/if}}

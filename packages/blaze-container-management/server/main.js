@@ -2,9 +2,16 @@ import { Meteor } from 'meteor/meteor';
 import Docker from 'dockerode';
 import path from 'path';
 
-const docker = new Docker();
 const fs = require('fs');
 const os = require('os');
+
+// Initialize Docker with proper socket path for macOS
+const dockerSocketPath = process.platform === 'darwin' 
+  ? `${os.homedir()}/.docker/run/docker.sock`
+  : '/var/run/docker.sock';
+
+const docker = new Docker({ socketPath: dockerSocketPath });
+console.log('Container management: Docker initialized with socket:', dockerSocketPath);
 
 Meteor.methods({
    createContainer: async function() {
@@ -96,7 +103,8 @@ Meteor.methods({
             
             // Format containers for the UI
             const formattedContainers = containers.map(container => {
-                const sshPort = container.Ports.find(port => port.PrivatePort === 22);
+                const ports = container.Ports || [];
+                const sshPort = ports.find(port => port.PrivatePort === 22);
                 
                 return {
                     id: container.Id,
@@ -118,6 +126,58 @@ Meteor.methods({
             throw new Meteor.Error('list-containers-failed', error.message);
         }
    },
+
+   startContainer: async function(containerId) {
+        try {
+            console.log(` Starting container: ${containerId}`);
+            const container = docker.getContainer(containerId);
+            await container.start();
+            console.log(` Container ${containerId} started successfully`);
+            
+            // Get updated container info
+            const containerInfo = await container.inspect();
+            const sshPort = containerInfo.NetworkSettings.Ports['22/tcp'] 
+                ? containerInfo.NetworkSettings.Ports['22/tcp'][0].HostPort 
+                : null;
+            
+            return {
+                success: true,
+                message: 'Container started successfully',
+                sshPort: sshPort
+            };
+        } catch(error) {
+            console.error(' Error starting container:', error);
+            throw new Meteor.Error('start-container-failed', error.message);
+        }
+    },
+
+    // ADD THIS NEW METHOD (after stopContainer)
+stopContainerOnly: async function(containerId) {
+  try {
+    console.log(` Stopping container (without delete): ${containerId}`);
+    const container = docker.getContainer(containerId);
+    
+    try {
+      await container.stop();
+      console.log(` Container ${containerId} stopped`);
+    } catch(stopError) {
+      // Container might already be stopped
+      console.log(` Container might already be stopped: ${stopError.message}`);
+    }
+    
+    // DON'T remove - just stop
+    console.log(` Container ${containerId} stopped successfully (not deleted)`);
+    
+    return {
+      success: true,
+      message: 'Container stopped successfully'
+    };
+    
+  } catch(error) {
+    console.error(' Error stopping container:', error);
+    throw new Meteor.Error('stop-container-failed', error.message);
+  }
+},
 
    stopContainer: async function(containerId) {
         try {
