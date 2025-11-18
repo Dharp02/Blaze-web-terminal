@@ -11,6 +11,10 @@ const displayedContainers = new ReactiveVar([]);
 const currentTab = new ReactiveVar('active');
 const favoriteFilter = new ReactiveVar(false);
 
+// NEW: Modal state
+const showConnectionMethodModal = new ReactiveVar(false);
+const selectedContainer = new ReactiveVar(null);
+
 // ===========================================
 // UTILITY FUNCTIONS
 // ===========================================
@@ -151,14 +155,21 @@ Template.containerManager.helpers({
     return displayedContainers.get().filter(c => c.isFavorite).length;
   },
   
-  // NEW: Check if container is running
   isRunning() {
     return this.status === 'running';
   },
   
-  // NEW: Check if container is stopped
   isStopped() {
     return this.status !== 'running';
+  },
+  
+  // NEW: Modal helpers
+  showConnectionMethodModal() {
+    return showConnectionMethodModal.get();
+  },
+  
+  selectedContainer() {
+    return selectedContainer.get();
   }
 });
 
@@ -189,6 +200,7 @@ Template.containerManager.events({
     });
   },
 
+  // UPDATED: Connect button - now shows modal instead of confirm()
   "click .connect-btn": function(event, template) {
     event.preventDefault();
     
@@ -204,14 +216,32 @@ Template.containerManager.events({
       return;
     }
     
-    const useDockerExec = confirm(
-      `Connect to ${container.name}\n\n` +
-      `Choose connection method:\n\n` +
-      `OK = Docker Exec (direct, faster)\n` +
-      `Cancel = SSH (requires password)`
-    );
+    // Show the connection method modal
+    selectedContainer.set(container);
+    showConnectionMethodModal.set(true);
+  },
+
+  // NEW: Close connection method modal
+  "click [data-action='closeConnectionMethodModal']": function(event, template) {
+    event.preventDefault();
+    showConnectionMethodModal.set(false);
+    selectedContainer.set(null);
+  },
+
+  // NEW: Select connection method from modal
+  "click [data-action='selectConnectionMethod']": function(event, template) {
+    event.preventDefault();
     
-    const method = useDockerExec ? 'docker' : 'ssh';
+    const method = event.currentTarget.getAttribute('data-method');
+    const container = selectedContainer.get();
+    
+    if (!container) return;
+    
+    // Close modal
+    showConnectionMethodModal.set(false);
+    
+    console.log(`🔌 Connecting via ${method.toUpperCase()} to ${container.name}`);
+    
     const connectionOptions = {
       containerName: container.name,
       method: method
@@ -220,6 +250,7 @@ Template.containerManager.events({
     if (method === 'ssh') {
       if (container.publicPort === 'N/A') {
         alert('⚠️ SSH port not available for this container');
+        selectedContainer.set(null);
         return;
       }
       
@@ -234,19 +265,34 @@ Template.containerManager.events({
     const success = window.TerminalAPI.createContainerConnection(connectionOptions);
     
     if (success) {
-      const btn = $(event.currentTarget);
-      const originalText = btn.text();
-      btn.text('✅ Connected!').css('background', '#4caf50');
-      
+      // Find the connect button for this specific container and update it
       setTimeout(() => {
-        btn.text(originalText).css('background', '');
-      }, 2000);
+        const btn = template.$(`[data-container-name="${container.name}"] .connect-btn`);
+        if (btn.length) {
+          const originalText = btn.text();
+          btn.text('✅ Connected!').css('background', '#4caf50');
+          
+          setTimeout(() => {
+            btn.text(originalText).css('background', '');
+          }, 2000);
+        }
+      }, 100);
     } else {
       alert('❌ Failed to connect. Please try again.');
     }
+    
+    selectedContainer.set(null);
   },
 
-  // NEW: Start container button
+  // Close modal when clicking overlay
+  "click .modal-overlay": function(event, template) {
+    if (event.target === event.currentTarget) {
+      showConnectionMethodModal.set(false);
+      selectedContainer.set(null);
+    }
+  },
+
+  // Start container button
   "click .start-btn": function(event, template) {
     event.preventDefault();
     
@@ -266,17 +312,13 @@ Template.containerManager.events({
       }
       
       console.log('✅ Container started:', containerName);
-      
-      // Reload containers to refresh UI
       loadContainers();
       
-      // Show success message
-      const successMsg = `✅ Container "${containerName}" started successfully!`;
-      alert(successMsg);
+      alert(`✅ Container "${containerName}" started successfully!`);
     });
   },
 
-  // UPDATED: Stop container button (doesn't delete)
+  // Stop container button
   "click .stop-btn": function(event, template) {
     event.preventDefault();
     
@@ -300,16 +342,13 @@ Template.containerManager.events({
       }
       
       console.log('✅ Container stopped:', containerName);
-      
-      // Reload containers to refresh UI
       loadContainers();
       
-      // Show success message
       alert(`✅ Container "${containerName}" stopped successfully!`);
     });
   },
 
-  // NEW: Delete container button (removes completely)
+  // Delete container button
   "click .delete-btn": function(event, template) {
     event.preventDefault();
     
@@ -334,12 +373,10 @@ Template.containerManager.events({
       
       console.log('✅ Container deleted:', containerName);
 
-      // Remove from favorites
       const currentFavorites = loadFavorites();
       const updatedFavorites = currentFavorites.filter(id => id !== containerId);
       localStorage.setItem('containerFavorites', JSON.stringify(updatedFavorites));
       
-      // Remove from UI
       const currentContainers = displayedContainers.get();
       const updatedContainers = currentContainers.filter(c => c.id !== containerId);
       displayedContainers.set(updatedContainers);

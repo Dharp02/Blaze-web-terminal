@@ -799,3 +799,154 @@ body {
   font-size: 14px;
   font-style: italic;
 }
+/* ===========================================
+   CONNECTION METHOD MODAL (COMPACT)
+   =========================================== */
+
+.connection-method-modal.compact {
+  max-width: 420px;
+  width: 90%;
+}
+
+.modal-subtitle {
+  margin: 0 0 16px 0;
+  color: #bdc3c7;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Connection Method Options (Compact) */
+.connection-method-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.connection-method-option:last-of-type {
+  margin-bottom: 0;
+}
+
+.connection-method-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #3498db;
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.connection-method-option:active {
+  transform: translateX(2px);
+}
+
+.method-icon {
+  font-size: 32px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.method-details {
+  flex: 1;
+}
+
+.method-details h5 {
+  margin: 0 0 4px 0;
+  color: #ecf0f1;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.method-description {
+  margin: 0 0 6px 0;
+  color: #95a5a6;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.feature-tag {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ecf0f1;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.feature-tag.recommended {
+  background: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+  border: 1px solid #27ae60;
+  font-weight: 600;
+}
+
+.method-arrow {
+  font-size: 20px;
+  color: #7f8c8d;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.connection-method-option:hover .method-arrow {
+  color: #3498db;
+  transform: translateX(4px);
+}
+
+/* Compact modal body */
+.connection-method-modal.compact .modal-body {
+  padding: 20px;
+}
+
+.connection-method-modal.compact .modal-header {
+  padding: 16px 20px;
+}
+
+.connection-method-modal.compact .modal-header h3 {
+  font-size: 16px;
+}
+
+.connection-method-modal.compact .modal-footer {
+  padding: 12px 20px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .connection-method-modal.compact {
+    max-width: 95%;
+  }
+  
+  .connection-method-option {
+    padding: 12px 14px;
+  }
+  
+  .method-icon {
+    font-size: 28px;
+  }
+  
+  .method-details h5 {
+    font-size: 15px;
+  }
+  
+  .method-description {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .connection-method-option {
+    gap: 10px;
+  }
+  
+  .method-icon {
+    font-size: 24px;
+  }
+  
+  .method-arrow {
+    display: none;
+  }
+}

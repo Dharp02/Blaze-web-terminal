@@ -1,5 +1,50 @@
 <template name="containerManager">
   <div class="active-containers-content">
+    
+    <!-- Connection Method Modal (Compact Version) -->
+    {{#if showConnectionMethodModal}}
+      <div class="modal-overlay">
+        <div class="modal-content connection-method-modal compact">
+          <div class="modal-header">
+            <h3>🔌 Connect to {{selectedContainer.name}}</h3>
+            <button class="modal-close" data-action="closeConnectionMethodModal">×</button>
+          </div>
+          
+          <div class="modal-body">
+            <p class="modal-subtitle">Choose connection method:</p>
+            
+            <!-- Docker Exec Option -->
+            <div class="connection-method-option" data-action="selectConnectionMethod" data-method="docker">
+              <div class="method-icon">🐳</div>
+              <div class="method-details">
+                <h5>Docker Exec</h5>
+                <p class="method-description">Direct access • Faster</p>
+                
+              </div>
+              <div class="method-arrow">→</div>
+            </div>
+            
+            <!-- SSH Option -->
+            <div class="connection-method-option" data-action="selectConnectionMethod" data-method="ssh">
+              <div class="method-icon">🔑</div>
+              <div class="method-details">
+                <h5>SSH Connection</h5>
+                <p class="method-description">Port {{selectedContainer.publicPort}} • Traditional SSH</p>
+                <span class="feature-tag recommended">Recommended</span>
+              </div>
+              <div class="method-arrow">→</div>
+            </div>
+          </div>
+          
+          <div class="modal-footer">
+            <button class="modal-btn cancel-btn" data-action="closeConnectionMethodModal">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    {{/if}}
+    
     <!-- Header Section with Tabs -->
     <div class="containers-header">
       <div class="header-title">
