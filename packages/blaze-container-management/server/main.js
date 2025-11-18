@@ -151,6 +151,34 @@ Meteor.methods({
         }
     },
 
+    // ADD THIS NEW METHOD (after stopContainer)
+stopContainerOnly: async function(containerId) {
+  try {
+    console.log(` Stopping container (without delete): ${containerId}`);
+    const container = docker.getContainer(containerId);
+    
+    try {
+      await container.stop();
+      console.log(` Container ${containerId} stopped`);
+    } catch(stopError) {
+      // Container might already be stopped
+      console.log(` Container might already be stopped: ${stopError.message}`);
+    }
+    
+    // DON'T remove - just stop
+    console.log(` Container ${containerId} stopped successfully (not deleted)`);
+    
+    return {
+      success: true,
+      message: 'Container stopped successfully'
+    };
+    
+  } catch(error) {
+    console.error(' Error stopping container:', error);
+    throw new Meteor.Error('stop-container-failed', error.message);
+  }
+},
+
    stopContainer: async function(containerId) {
         try {
         console.log(` Closing container: ${containerId}`);

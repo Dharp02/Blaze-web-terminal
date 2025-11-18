@@ -12,27 +12,28 @@ class SimpleTerminalServer {
     this.wss = null;
     this.sessions = new Map();
     this.clients = new Map();
+    this.sessionSubscribers = new Map(); // sessionId -> Set of clientIds
     
-    // Map to track which clients are subscribed to which sessions
-    // sessionId -> Set of clientIds
-    this.sessionSubscribers = new Map();
-    
-    // Initialize Docker with proper socket path for macOS
+    // Initialize Docker
     const dockerSocketPath = process.platform === 'darwin' 
       ? `${os.homedir()}/.docker/run/docker.sock`
       : '/var/run/docker.sock';
     
     this.docker = new Docker({ socketPath: dockerSocketPath });
-    console.log('Docker initialized with socket:', dockerSocketPath);
+    console.log('🐳 Docker initialized with socket:', dockerSocketPath);
     
-    this.sessionScreens = new Map();
+    this.sessionScreens = new Map(); // Buffer for reconnections
+    
     // Session cleanup settings
-    this.sessionTimeoutMs = 30 * 60 * 1000; // 30 minutes before cleanup
-    this.cleanupInterval = 5 * 60 * 1000; // Check every 5 minutes
+    this.sessionTimeoutMs = 30 * 60 * 1000; // 30 minutes
+    this.cleanupInterval = 5 * 60 * 1000; // 5 minutes
     
-    // Start periodic cleanup
     this.startSessionCleanup();
   }
+
+  // ===========================================
+  // DOCKER HELPERS
+  // ===========================================
 
   async getContainerInfo(type, identifier) {
     try {
@@ -45,14 +46,12 @@ class SimpleTerminalServer {
         });
         if (!container) return null;
         
-        const sshPort = container.Ports && container.Ports.length > 0
-          ? container.Ports.find(port => port.PrivatePort === 22)
-          : null;
+        const sshPort = container.Ports?.find(port => port.PrivatePort === 22);
         return {
           id: container.Id,
           name: container.Names[0].replace('/', ''),
           state: container.State,
-          sshPort: sshPort ? sshPort.PublicPort : null
+          sshPort: sshPort?.PublicPort || null
         };
       } else if (type === 'id') {
         const container = containers.find(c => 
@@ -60,110 +59,94 @@ class SimpleTerminalServer {
         );
         if (!container) return null;
         
-        const sshPort = container.Ports && container.Ports.length > 0
-          ? container.Ports.find(port => port.PrivatePort === 22)
-          : null;
+        const sshPort = container.Ports?.find(port => port.PrivatePort === 22);
         return {
           id: container.Id,
           name: container.Names[0].replace('/', ''),
           state: container.State,
-          sshPort: sshPort ? sshPort.PublicPort : null
+          sshPort: sshPort?.PublicPort || null
         };
       }
     } catch (error) {
-      console.error('Error getting container info:', error);
+      console.error('❌ Error getting container info:', error);
       return null;
     }
   }
 
+  // ===========================================
+  // SERVER LIFECYCLE
+  // ===========================================
+
   start() {
-    // Create HTTP server for WebSocket upgrade handling
+    // Create HTTP server for upgrade handling
     this.server = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end('WebSocket Terminal Server');
     });
 
-    // Create WebSocket server (no server mode)
+    // Create WebSocket server (no server mode - manual upgrade)
     this.wss = new WebSocket.Server({ noServer: true });
-    console.log('Terminal server started on port', this.port);
 
-    // Handle WebSocket upgrade requests
+    // Handle WebSocket upgrade requests with path-based routing
     this.server.on('upgrade', async (request, socket, head) => {
       const parsedUrl = url.parse(request.url, true);
       const pathname = parsedUrl.pathname;
       const query = parsedUrl.query;
-      const clientIP = request.socket.remoteAddress;
 
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📥 Incoming WebSocket Connection Request');
-      console.log('  Path:', pathname);
-      console.log('  Query:', query);
-      console.log('  Client IP:', clientIP);
-      console.log('  Time:', new Date().toISOString());
+      console.log('📥 WebSocket upgrade request:', pathname);
 
       // Parse path: /socket/name/container-name or /socket/id/container-id
       const pathMatch = pathname.match(/^\/socket\/(name|id)\/(.+)$/);
       
       if (pathMatch) {
         const [, type, identifier] = pathMatch;
-        const method = query.method || 'docker'; // Default to Docker exec
+        const method = query.method || 'docker';
         
-        // Validate container exists
+        // Validate container exists and is running
         const containerInfo = await this.getContainerInfo(type, decodeURIComponent(identifier));
         
         if (!containerInfo) {
-          console.error('Container not found:', type, identifier);
+          console.error('❌ Container not found:', type, identifier);
           socket.write('HTTP/1.1 404 Not Found\r\n\r\nContainer not found');
           socket.destroy();
           return;
         }
 
         if (containerInfo.state !== 'running') {
-          console.error('Container not running:', containerInfo.name);
+          console.error('❌ Container not running:', containerInfo.name);
           socket.write('HTTP/1.1 400 Bad Request\r\n\r\nContainer not running');
           socket.destroy();
           return;
         }
 
-        console.log('✅ Container validated:', containerInfo.name, '(' + containerInfo.state + ')');
-        console.log('  Container ID:', containerInfo.id);
-        console.log('  Method:', method);
-        console.log('  Upgrading WebSocket connection...');
+        console.log('✅ Container validated:', containerInfo.name, `(${method})`);
 
         // Perform WebSocket upgrade
         this.wss.handleUpgrade(request, socket, head, (ws) => {
-          // Attach container info and method to WebSocket
           ws.containerInfo = containerInfo;
           ws.connectionMethod = method;
           this.wss.emit('connection', ws, request);
         });
       } else {
-        // Reject connections without proper path
-        console.error('Invalid WebSocket path:', pathname);
-        socket.write('HTTP/1.1 400 Bad Request\r\n\r\nPath-based routing required. Use /socket/name/{container-name} or /socket/id/{container-id}');
+        console.error('❌ Invalid path:', pathname);
+        socket.write('HTTP/1.1 400 Bad Request\r\n\r\nPath required: /socket/name/{container} or /socket/id/{container}');
         socket.destroy();
       }
     });
 
+    // Handle WebSocket connections
     this.wss.on('connection', (ws, request) => {
       const clientId = this.generateId();
       this.clients.set(clientId, ws);
       
-      // All connections must have container info (path-based routing required)
+      // All connections must have container info
       if (!ws.containerInfo) {
-        console.error('Connection rejected - no container info (path required)');
-        ws.close(1008, 'Path-based routing required');
+        console.error('❌ No container info - rejecting');
+        ws.close(1008, 'Container info required');
         return;
       }
 
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('🔌 WebSocket Connection Established');
-      console.log('  Client ID:', clientId);
-      console.log('  Container:', ws.containerInfo.name);
-      console.log('  Container ID:', ws.containerInfo.id);
-      console.log('  Method:', ws.connectionMethod);
-      console.log('  State:', ws.containerInfo.state);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('🔌 Client connected:', clientId, '→', ws.containerInfo.name);
 
       // Send connection confirmation
       ws.send(JSON.stringify({
@@ -178,72 +161,62 @@ class SimpleTerminalServer {
           const message = JSON.parse(data.toString());
           this.handleMessage(ws, clientId, message);
         } catch (error) {
-          console.error('Error parsing message:', error);
+          console.error('❌ Error parsing message:', error);
         }
       });
 
       ws.on('close', () => {
-        console.log('Client disconnected:', clientId);
-        // DON'T cleanup sessions immediately - just mark them as disconnected
+        console.log('🔌 Client disconnected:', clientId);
         this.markClientSessionsAsDisconnected(clientId);
         this.clients.delete(clientId);
       });
 
       ws.on('error', (error) => {
-        console.error('WebSocket error for client', clientId + ':', error);
+        console.error('❌ WebSocket error:', clientId, error.message);
       });
     });
 
     // Start HTTP server
     this.server.listen(this.port);
+    console.log('🚀 Terminal server started on port', this.port);
 
     // Graceful shutdown
     process.on('SIGINT', () => {
-      console.log('\nShutting down...');
+      console.log('\n🛑 Shutting down...');
       this.shutdown();
       process.exit(0);
     });
   }
 
-  /*
-   * Mark sessions as disconnected but keep SSH alive
-   * Now handles multiple subscribers per session
-   */
+  // ===========================================
+  // SESSION MANAGEMENT
+  // ===========================================
+
   markClientSessionsAsDisconnected(clientId) {
-    // Remove this client from all session subscriber lists
     this.sessionSubscribers.forEach((subscribers, sessionId) => {
       if (subscribers.has(clientId)) {
-        console.log('Removing client', clientId, 'from session', sessionId);
         subscribers.delete(clientId);
         
-        // If this was the last subscriber, mark session for potential cleanup
         if (subscribers.size === 0) {
           const session = this.sessions.get(sessionId);
           if (session) {
-            console.log('No more subscribers for session', sessionId, '- marking as disconnected');
             session.disconnectedAt = new Date();
+            console.log('⏰ Session marked for cleanup:', sessionId);
           }
-        } else {
-          console.log('Session', sessionId, 'still has', subscribers.size, 'subscriber(s)');
         }
       }
     });
   }
 
-  /**
-   * Periodic cleanup of old disconnected sessions
-   */
   startSessionCleanup() {
     setInterval(() => {
       const now = new Date();
       let cleanedCount = 0;
       
       for (const [sessionId, session] of this.sessions.entries()) {
-        // Only cleanup sessions that have been disconnected for too long
         if (!session.ws && session.disconnectedAt) {
           const timeSinceDisconnect = now - session.disconnectedAt;
           if (timeSinceDisconnect > this.sessionTimeoutMs) {
-            console.log('Cleaning up old session:', sessionId);
             this.cleanupSession(sessionId, false);
             cleanedCount++;
           }
@@ -251,10 +224,14 @@ class SimpleTerminalServer {
       }
       
       if (cleanedCount > 0) {
-        console.log('Cleaned up', cleanedCount, 'old sessions');
+        console.log('🧹 Cleaned up', cleanedCount, 'old sessions');
       }
     }, this.cleanupInterval);
   }
+
+  // ===========================================
+  // MESSAGE HANDLERS
+  // ===========================================
 
   handleMessage(ws, clientId, message) {
     switch (message.type) {
@@ -276,21 +253,19 @@ class SimpleTerminalServer {
       case 'resize_terminal':
         this.resizeTerminal(message);
         break;
+      default:
+        console.log('⚠️ Unknown message type:', message.type);
     }
   }
 
-  /**
-   * List all active sessions
-   */
   listSessions(ws, clientId) {
-    console.log('Listing active sessions for client:', clientId);
-    
     const activeSessions = [];
+    
     for (const [sessionId, session] of this.sessions.entries()) {
       if (session.isConnected) {
         activeSessions.push({
           sessionId: sessionId,
-          title: session.name || 'Terminal ' + sessionId.substr(0, 8),
+          title: session.name || `Terminal ${sessionId.substr(0, 8)}`,
           method: session.method || 'ssh',
           host: session.host,
           username: session.username,
@@ -302,7 +277,7 @@ class SimpleTerminalServer {
       }
     }
     
-    console.log('Found', activeSessions.length, 'active sessions');
+    console.log('📋 Listing', activeSessions.length, 'active sessions for client:', clientId);
     
     ws.send(JSON.stringify({
       type: 'existing_sessions',
@@ -314,7 +289,7 @@ class SimpleTerminalServer {
     const session = this.sessions.get(sessionId);
     
     if (!session || !session.isConnected) {
-      console.log('Session not found or disconnected:', sessionId);
+      console.log('❌ Session not found:', sessionId);
       ws.send(JSON.stringify({
         type: 'session_not_found',
         sessionId: sessionId
@@ -327,18 +302,16 @@ class SimpleTerminalServer {
       this.sessionSubscribers.set(sessionId, new Set());
     }
     this.sessionSubscribers.get(sessionId).add(clientId);
-    
-    // Clear disconnection timestamp since we have active subscribers
     session.disconnectedAt = null;
     
-    console.log('Client', clientId, 'subscribed to session', sessionId, 
-                '(Total subscribers:', this.sessionSubscribers.get(sessionId).size + ')');
+    console.log('🔄 Client subscribed to session:', sessionId, 
+                `(${this.sessionSubscribers.get(sessionId).size} subscribers)`);
     
     ws.send(JSON.stringify({
       type: 'session_reconnected',
       sessionId: sessionId,
-      title: session.name || 'Terminal ' + sessionId.substr(0, 8),
-      method: session.method || 'ssh',
+      title: session.name,
+      method: session.method,
       host: session.host,
       username: session.username,
       containerName: session.containerName,
@@ -346,9 +319,9 @@ class SimpleTerminalServer {
       rows: session.rows
     }));
     
-    // Send any buffered output to the newly connected client
+    // Send buffered output
     const bufferedOutput = this.sessionScreens.get(sessionId);
-    if (bufferedOutput && session.isConnected) {
+    if (bufferedOutput) {
       setTimeout(() => {
         ws.send(JSON.stringify({
           type: 'terminal_output',
@@ -359,39 +332,31 @@ class SimpleTerminalServer {
     }
   }
 
+  // ===========================================
+  // TERMINAL CREATION
+  // ===========================================
+
   createTerminal(ws, clientId, message) {
     const { sessionId, cols = 80, rows = 24, sshConfig } = message;
-    
     const method = ws.connectionMethod || 'docker';
     const containerInfo = ws.containerInfo;
 
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🖥️  Creating Terminal Session');
-    console.log('  Session ID:', sessionId);
-    console.log('  Client ID:', clientId);
-    console.log('  Method:', method);
-    console.log('  Size:', cols + 'x' + rows);
+    console.log('🖥️  Creating terminal:', method, '→', containerInfo.name);
 
     if (method === 'docker' && containerInfo) {
       this.createDockerTerminal(ws, clientId, sessionId, containerInfo, cols, rows);
     } else if (method === 'ssh') {
       if (!sshConfig) {
-        console.error('SSH method requires sshConfig');
-        this.sendError(ws, sessionId, 'SSH configuration required for SSH method');
+        this.sendError(ws, sessionId, 'SSH config required for SSH method');
         return;
       }
       this.createSSHTerminal(ws, clientId, sessionId, sshConfig, cols, rows);
     } else {
-      console.error('Invalid method or missing container info');
       this.sendError(ws, sessionId, 'Invalid connection configuration');
     }
   }
 
   createDockerTerminal(ws, clientId, sessionId, containerInfo, cols, rows) {
-    console.log('  Container:', containerInfo.name);
-    console.log('  Container ID:', containerInfo.id);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
     const container = this.docker.getContainer(containerInfo.id);
     const session = {
       id: sessionId,
@@ -403,24 +368,21 @@ class SimpleTerminalServer {
       rows: rows,
       isConnected: false,
       disconnectedAt: null,
-      
-      // Connection details
       containerId: containerInfo.id,
       containerName: containerInfo.name,
       createdAt: new Date().toISOString(),
-      name: 'docker:' + containerInfo.name
+      name: `docker:${containerInfo.name}`
     };
 
     this.sessions.set(sessionId, session);
     
-    // Subscribe this client to the session
+    // Subscribe client
     if (!this.sessionSubscribers.has(sessionId)) {
       this.sessionSubscribers.set(sessionId, new Set());
     }
     this.sessionSubscribers.get(sessionId).add(clientId);
-    console.log('Client', clientId, 'subscribed to new session', sessionId);
 
-    // Create exec instance
+    // Create Docker exec instance
     container.exec({
       AttachStdin: true,
       AttachStdout: true,
@@ -430,7 +392,7 @@ class SimpleTerminalServer {
       Cmd: ['/bin/bash']
     }, (err, exec) => {
       if (err) {
-        console.error('Docker exec creation error:', err.message);
+        console.error('❌ Docker exec creation failed:', err.message);
         this.sendError(ws, sessionId, 'Failed to create terminal: ' + err.message);
         this.cleanupSession(sessionId);
         return;
@@ -438,14 +400,9 @@ class SimpleTerminalServer {
 
       session.exec = exec;
 
-      // Start the exec instance
-      exec.start({
-        hijack: true,
-        stdin: true,
-        Tty: true
-      }, (err, stream) => {
+      exec.start({ hijack: true, stdin: true, Tty: true }, (err, stream) => {
         if (err) {
-          console.error('Docker exec start error:', err.message);
+          console.error('❌ Docker exec start failed:', err.message);
           this.sendError(ws, sessionId, 'Failed to start terminal: ' + err.message);
           this.cleanupSession(sessionId);
           return;
@@ -454,14 +411,14 @@ class SimpleTerminalServer {
         session.stream = stream;
         session.isConnected = true;
 
+        // Resize terminal
         container.resize({
           h: rows,
           w: cols,
           id: exec.id
-        }).catch(err => {
-          console.error('Resize error:', err.message);
-        });
+        }).catch(err => console.error('⚠️ Resize error:', err.message));
 
+        // Send success
         this.sendToSession(sessionId, {
           type: 'terminal_created',
           sessionId: sessionId,
@@ -473,15 +430,13 @@ class SimpleTerminalServer {
           containerName: containerInfo.name
         });
 
-        // Handle terminal output
+        // Handle output
         stream.on('data', (data) => {
           const output = data.toString();
           
-          // Store screen content for reconnections
+          // Buffer output (keep last 10KB)
           let screenContent = this.sessionScreens.get(sessionId) || '';
           screenContent += output;
-          
-          // Keep only last 10KB to avoid memory issues
           if (screenContent.length > 10000) {
             screenContent = screenContent.slice(-10000);
           }
@@ -494,9 +449,8 @@ class SimpleTerminalServer {
           });
         });
 
-        // Handle stream close
         stream.on('end', () => {
-          console.log('Docker exec stream closed:', sessionId);
+          console.log('🔚 Docker exec stream ended:', sessionId);
           this.sendToSession(sessionId, {
             type: 'terminal_exit',
             sessionId: sessionId,
@@ -505,9 +459,8 @@ class SimpleTerminalServer {
           this.cleanupSession(sessionId);
         });
 
-        // Handle stream errors
         stream.on('error', (err) => {
-          console.error('Docker exec stream error:', err.message);
+          console.error('❌ Docker exec stream error:', err.message);
           this.sendError(ws, sessionId, err.message);
         });
       });
@@ -525,25 +478,21 @@ class SimpleTerminalServer {
       rows: rows,
       isConnected: false,
       disconnectedAt: null,
-      
-      // Connection details
       host: sshConfig.host,
       port: sshConfig.port,
       username: sshConfig.username,
       createdAt: new Date().toISOString(),
-      name: sshConfig.username + '@' + sshConfig.host + ':' + sshConfig.port
+      name: `${sshConfig.username}@${sshConfig.host}:${sshConfig.port}`
     };
 
     this.sessions.set(sessionId, session);
     
-    // Subscribe this client to the session
+    // Subscribe client
     if (!this.sessionSubscribers.has(sessionId)) {
       this.sessionSubscribers.set(sessionId, new Set());
     }
     this.sessionSubscribers.get(sessionId).add(clientId);
-    console.log('Client', clientId, 'subscribed to new session', sessionId);
 
-    // SSH connection timeout
     const timeout = setTimeout(() => {
       if (!session.isConnected) {
         this.sendError(ws, sessionId, 'Connection timeout');
@@ -560,7 +509,7 @@ class SimpleTerminalServer {
         term: 'xterm-256color'
       }, (err, stream) => {
         if (err) {
-          console.error('Shell error:', err.message);
+          console.error('❌ SSH shell error:', err.message);
           this.sendError(ws, sessionId, 'Shell error: ' + err.message);
           this.cleanupSession(sessionId);
           return;
@@ -569,10 +518,10 @@ class SimpleTerminalServer {
         session.stream = stream;
         session.isConnected = true;
 
-        // Send success response
         this.sendToSession(sessionId, {
           type: 'terminal_created', 
           sessionId: sessionId,
+          method: 'ssh',
           shell: 'bash',
           platform: 'linux',
           cols: cols,
@@ -580,41 +529,36 @@ class SimpleTerminalServer {
           host: sshConfig.host
         });
 
-        // Handle terminal output
         stream.on('data', (data) => {
           const output = data.toString();
           
-          //  STORE screen content for reconnections
+          // Buffer output
           let screenContent = this.sessionScreens.get(sessionId) || '';
           screenContent += output;
-          
-          // Keep only last 10KB to avoid memory issues
           if (screenContent.length > 10000) {
             screenContent = screenContent.slice(-10000);
           }
           this.sessionScreens.set(sessionId, screenContent);
+          
           this.sendToSession(sessionId, {
             type: 'terminal_output',
             sessionId: sessionId,
-            data: data.toString()
+            data: output
           });
         });
 
-        // Handle stream close
         stream.on('close', (code) => {
-          console.log('SSH stream closed:', sessionId, '(code: ' + code + ')');
+          console.log('🔚 SSH stream closed:', sessionId);
           this.sendToSession(sessionId, {
             type: 'terminal_exit',
             sessionId: sessionId,
             exitCode: code || 0
           });
-          // Cleanup the session since SSH itself closed
           this.cleanupSession(sessionId);
         });
 
-        // Handle stream errors
         stream.on('error', (err) => {
-          console.error('SSH stream error:', err.message);
+          console.error('❌ SSH stream error:', err.message);
           this.sendError(ws, sessionId, err.message);
         });
       });
@@ -622,24 +566,19 @@ class SimpleTerminalServer {
 
     ssh.on('error', (err) => {
       clearTimeout(timeout);
-      console.error('SSH connection error:', err.message);
+      console.error('❌ SSH connection error:', err.message);
       
       let errorMessage = 'Connection failed';
-      if (err.code === 'ENOTFOUND') {
-        errorMessage = 'Host not found';
-      } else if (err.code === 'ECONNREFUSED') {
-        errorMessage = 'Connection refused - check host and port';
-      } else if (err.message.includes('authentication')) {
-        errorMessage = 'Authentication failed - check username and password';
-      } else if (err.message.includes('timeout')) {
-        errorMessage = 'Connection timeout';
-      }
+      if (err.code === 'ENOTFOUND') errorMessage = 'Host not found';
+      else if (err.code === 'ECONNREFUSED') errorMessage = 'Connection refused';
+      else if (err.message.includes('authentication')) errorMessage = 'Authentication failed';
+      else if (err.message.includes('timeout')) errorMessage = 'Connection timeout';
       
       this.sendError(ws, sessionId, errorMessage);
       this.cleanupSession(sessionId);
     });
 
-    // Connect with provided credentials
+    // Connect
     try {
       ssh.connect({
         host: sshConfig.host,
@@ -651,23 +590,19 @@ class SimpleTerminalServer {
         keepaliveCountMax: 3
       });
     } catch (error) {
-      console.error('SSH connect error:', error.message);
+      console.error('❌ SSH connect error:', error.message);
       this.sendError(ws, sessionId, error.message);
       this.cleanupSession(sessionId);
     }
   }
 
-  /**
-   * Send message to all clients subscribed to a session
-   * This enables synchronized terminal output across multiple windows
-   */
+  // ===========================================
+  // I/O HANDLERS
+  // ===========================================
+
   sendToSession(sessionId, message) {
     const subscribers = this.sessionSubscribers.get(sessionId);
-    
-    if (!subscribers || subscribers.size === 0) {
-      console.log('No subscribers for session', sessionId);
-      return;
-    }
+    if (!subscribers || subscribers.size === 0) return;
     
     const messageStr = JSON.stringify(message);
     let sentCount = 0;
@@ -677,18 +612,8 @@ class SimpleTerminalServer {
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(messageStr);
         sentCount++;
-      } else {
-        // Client no longer connected, will be cleaned up on next disconnect event
-        console.log('Client', clientId, 'websocket not available');
       }
     });
-    
-    if (sentCount > 0 && message.type === 'terminal_output') {
-      // Only log output broadcasts occasionally to avoid spam
-      if (Math.random() < 0.01) { // 1% sample
-        console.log('Broadcasted output to', sentCount, 'subscriber(s) for session', sessionId);
-      }
-    }
   }
 
   handleInput(message) {
@@ -699,10 +624,8 @@ class SimpleTerminalServer {
       try {
         session.stream.write(input);
       } catch (error) {
-        console.error('Input error:', error.message);
+        console.error('❌ Input error:', error.message);
       }
-    } else {
-      console.log('Cannot send input to session', sessionId, '- not connected');
     }
   }
 
@@ -713,7 +636,6 @@ class SimpleTerminalServer {
     if (session && session.stream) {
       try {
         if (session.method === 'docker') {
-          // Docker exec resize
           const container = session.container;
           const exec = session.exec;
           if (container && exec) {
@@ -724,44 +646,36 @@ class SimpleTerminalServer {
             }).then(() => {
               session.cols = cols;
               session.rows = rows;
-              console.log('Resized (docker)', sessionId, 'to', cols + 'x' + rows);
             }).catch(error => {
-              console.error('Docker resize error:', error.message);
+              console.error('❌ Docker resize error:', error.message);
             });
           }
         } else {
-          // SSH resize
           session.stream.setWindow(rows, cols);
           session.cols = cols;
           session.rows = rows;
-          console.log('Resized (ssh)', sessionId, 'to', cols + 'x' + rows);
         }
       } catch (error) {
-        console.error('Resize error:', error.message);
+        console.error('❌ Resize error:', error.message);
       }
     }
   }
 
   closeTerminal(sessionId) {
-    console.log('Closing terminal:', sessionId);
     this.cleanupSession(sessionId);
   }
+
+  // ===========================================
+  // CLEANUP
+  // ===========================================
 
   cleanupSession(sessionId, sendNotification = true) {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
     try {
-      if (session.stream) {
-        session.stream.end();
-      }
-      if (session.ssh) {
-        session.ssh.end();
-      }
-      if (session.exec) {
-        // Docker exec cleanup - stream end is sufficient
-        console.log('Cleaned up Docker exec:', sessionId);
-      }
+      if (session.stream) session.stream.end();
+      if (session.ssh) session.ssh.end();
       
       if (sendNotification) {
         this.sendToSession(sessionId, {
@@ -770,13 +684,13 @@ class SimpleTerminalServer {
         });
       }
     } catch (error) {
-      console.error('Cleanup error:', error.message);
+      console.error('❌ Cleanup error:', error.message);
     }
 
     this.sessions.delete(sessionId);
     this.sessionScreens.delete(sessionId);
-    this.sessionSubscribers.delete(sessionId); // Remove all subscribers
-    console.log('Session cleaned up:', sessionId);
+    this.sessionSubscribers.delete(sessionId);
+    console.log('🧹 Session cleaned up:', sessionId);
   }
 
   sendError(ws, sessionId, error) {
@@ -790,24 +704,20 @@ class SimpleTerminalServer {
   }
 
   shutdown() {
-    console.log('Cleaning up all sessions...');
+    console.log('🧹 Cleaning up all sessions...');
     
     for (const sessionId of this.sessions.keys()) {
       this.cleanupSession(sessionId, false);
     }
 
-    if (this.wss) {
-      this.wss.close();
-    }
+    if (this.wss) this.wss.close();
+    if (this.server) this.server.close();
   }
 
   generateId() {
     return Math.random().toString(36).substr(2, 9);
   }
 
-  /**
-   * Get statistics about active sessions
-   */
   getSessionStats() {
     const total = this.sessions.size;
     let connected = 0;
@@ -838,7 +748,7 @@ server.start();
 setInterval(() => {
   const stats = server.getSessionStats();
   if (stats.total > 0) {
-    console.log('📊 Sessions:', stats.total, 'total (' + stats.connected, 'with subscribers,', 
-                stats.disconnected, 'idle) -', stats.totalSubscribers, 'total subscriber(s)');
+    console.log('📊 Sessions:', stats.total, 'total,', stats.connected, 'active,', 
+                stats.disconnected, 'idle,', stats.totalSubscribers, 'subscribers');
   }
-}, 60000); // Every minute
+}, 60000);
